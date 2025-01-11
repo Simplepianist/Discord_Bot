@@ -74,7 +74,8 @@ from Commands.game_commands import (scoreboard_command, daily_command, send_comm
 from Commands.main_commands import (help_command, rules_command, alias_command, ping_command,
                                     invite_command, stream_command)
 from Commands.social_commands import anime_quote, qotd_command
-from Util.variables import SHUTDOWN_INITIATED, streamURL
+from Util import variables
+from Util.variables import streamURL
 from Util.util_commands import db, execute_gaming_with_timeout, send_message
 from Util.variables import bot
 
@@ -194,7 +195,7 @@ async def shutdown(_: Context | Interaction):
     - Setzt die globale Variable `SHUTDOWN_INITIATED` auf True.
     - Ruft die Funktion `shutdown_command` auf, um den Bot herunterzufahren.
     """
-    SHUTDOWN_INITIATED = True
+    variables.SHUTDOWN_INITIATED = True
     await shutdown_command()
 
 
@@ -710,7 +711,7 @@ async def qotd_slash(ctx: Context | Interaction):
 try:
     bot.run(os.environ["token"])
 finally:
-    if not SHUTDOWN_INITIATED:
+    if not variables.SHUTDOWN_INITIATED:
         # Protokolliert, dass der Shutdown-Prozess gestartet wird
         logging.info("Shutting down")
         # Schließt den Datenbank-Pool

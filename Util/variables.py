@@ -25,7 +25,6 @@ def load_config(name):
         pass
     return json_file[name]
 
-test: bool = load_config("test")
 intents = discord.Intents.default()
 intents.all()
 intents.members = True
