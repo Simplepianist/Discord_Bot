@@ -13,8 +13,8 @@ Dieses Projekt ist ein Python-basiertes System, das einen Streamer-Bot für Twit
 
 1. Klonen Sie das Repository:
     ```bash
-    git clone <repository-url>
-    cd <repository-verzeichnis>
+    git clone https://github.com/Simplepianist/Discord_Bot.git
+    cd Discord_Bot
     ```
 
 2. Erstellen Sie eine virtuelle Umgebung und aktivieren Sie sie:
