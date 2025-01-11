@@ -4,12 +4,18 @@ import random
 class Blackjack:
     def __init__(self, bet):
         self.cards = ["Ass", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Bube", "Dame", "König"]
-        self.kinds = [["heart", "space", "diamonds", "clubs"], ["heart", "space", "diamonds", "clubs"],
-                      ["heart", "space", "diamonds", "clubs"], ["heart", "space", "diamonds", "clubs"],
-                      ["heart", "space", "diamonds", "clubs"], ["heart", "space", "diamonds", "clubs"],
-                      ["heart", "space", "diamonds", "clubs"], ["heart", "space", "diamonds", "clubs"],
-                      ["heart", "space", "diamonds", "clubs"], ["heart", "space", "diamonds", "clubs"],
-                      ["heart", "space", "diamonds", "clubs"], ["heart", "space", "diamonds", "clubs"],
+        self.kinds = [["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
+                      ["heart", "space", "diamonds", "clubs"],
                       ["heart", "space", "diamonds", "clubs"]]
         self.bet = bet
         self.dealer = 0
@@ -21,34 +27,31 @@ class Blackjack:
         self.dealerstand = False
 
     def firstdraw(self):
-        for i in range(2):
+        for _ in range(2):
             self.draw_another("player")
 
         self.natural_player = self.is_blackjack("player")
-        for i in range(2):
+        for _ in range(2):
             self.draw_another("dealer")
 
     def is_blackjack(self, who):
         if who == "player":
             if self.player == 21 and len(self.playerdrawn) == 2:
                 return True
-            else:
-                return False
-        else:
-            if self.dealer == 21 and len(self.dealerdrawn) == 2:
-                return True
-            else:
-                return False
+            return False
+        if self.dealer == 21 and len(self.dealerdrawn) == 2:
+            return True
+        return False
 
     def draw_another(self, who):
         try:
             drawnnum = random.randint(0, len(self.cards) - 1)
-        except:
+        except ValueError:
             drawnnum = 0
         drawn = self.cards[drawnnum]
         try:
             kindnum = random.randint(0, len(self.kinds[drawnnum]) - 1)
-        except:
+        except ValueError:
             kindnum = 0
         kind = self.kinds[drawnnum][kindnum]
         if len(self.kinds[drawnnum]) - 1 == 0:
@@ -112,60 +115,59 @@ class Blackjack:
 
     def dealer_draw(self):
         for card in self.dealerdrawn:
-            if card[0] == "Ass" and not (
-                    self.dealer > 17 and self.is_overbought("player")) and not self.dealer >= self.player:
+            if (card[0] == "Ass" and not (
+                    self.dealer > 17 and self.is_overbought("player"))
+                    and not self.dealer >= self.player):
                 return True
         if self.dealer < 17:
             return True
-        elif self.dealer < self.player and not self.is_overbought("player"):
+        if self.dealer < self.player and not self.is_overbought("player"):
             return True
-        else:
-            return False
+        return False
 
     def is_overbought(self, kind):
         if kind == "player":
             if self.player > 21:
                 return True
-            else:
-                return False
-        elif kind == "dealer":
+            return False
+        if kind == "dealer":
             if self.dealer > 21:
                 return True
-            else:
-                return False
+        return False
 
     def is_over(self):
         if self.playerstand and self.dealerstand:
             return True
-        else:
-            return False
+        return False
 
     def won(self):
-        if self.player == self.dealer and not self.is_overbought("player") and not self.is_overbought(
-                "dealer") or self.is_overbought("player") and self.is_overbought("dealer"):
+        if (self.player == self.dealer and not self.is_overbought("player")
+                and not self.is_overbought(
+                "dealer") or self.is_overbought("player") and self.is_overbought("dealer")):
             if self.is_blackjack("player") and not self.is_blackjack("dealer"):
                 return "doppelt"
             return "draw"
-        elif self.dealer > self.player and not self.is_overbought("dealer"):
+        if self.dealer > self.player and not self.is_overbought("dealer"):
             return "dealer"
-        elif self.player > self.dealer and not self.is_overbought("player"):
+        if self.player > self.dealer and not self.is_overbought("player"):
             if self.is_blackjack("player") and not self.is_blackjack("dealer"):
                 return "doppelt"
             return "player"
-        elif self.is_overbought("player"):
+        if self.is_overbought("player"):
             return "dealer"
-        elif self.is_overbought("dealer"):
+        if self.is_overbought("dealer"):
             if self.is_blackjack("player") and not self.is_blackjack("dealer"):
                 return "doppelt"
             return "player"
+        return "draw"
 
     def get_money(self):
         winner = self.won()
         if winner == "draw":
             return self.bet
-        elif winner == "player":
+        if winner == "player":
             return int(self.bet) * 2
-        elif winner == "dealer":
+        if winner == "dealer":
             return 0
-        elif winner == "doppelt":
+        if winner == "doppelt":
             return int(int(self.bet) * 2.5 - self.bet)

@@ -28,16 +28,15 @@ async def play_roulette(entry, bet_type: str, msg) -> bool:
     if bet_type == "number":
         entry = int(entry)
         return entry == winning[0]
-    elif bet_type == "color":
+    if bet_type == "color":
         return entry == winning[1]
 
 def validate_entry(entry: str):
     if entry.isdigit() and 37 > int(entry) >= 0:
         return [True, int(entry)]
-    elif entry.lower() in ["red", "black", "green"]:
+    if entry.lower() in ["red", "black", "green"]:
         return [True, entry.lower()]
-    else:
-        return [False, None]
+    return [False, None]
 
 async def spinning(ctx: Context | Interaction):
     msg = None
@@ -45,12 +44,17 @@ async def spinning(ctx: Context | Interaction):
         spin_number, spin_color = random.choice(ROULETTE_NUMBERS)
         if msg is None:
             if spin_color == "green":
-                msg = await send_message(ctx, f"Spinning... **{spin_number}**  :green_square:")
+                msg = await send_message(ctx, f"Spinning... "
+                                              f"**{spin_number}**  :green_square:")
             elif spin_color == "red":
-                msg =await send_message(ctx, f"Spinning... **{spin_number}**  :red_square:")
+                msg =await send_message(ctx, f"Spinning... "
+                                             f"**{spin_number}**  :red_square:")
             elif spin_color == "black":
-                msg =await send_message(ctx, f"Spinning... **{spin_number}**  :black_large_square:")
+                msg =await send_message(ctx, f"Spinning... "
+                                             f"**{spin_number}**  :black_large_square:")
         else:
-            await msg.edit(content=f"Spinning... **{spin_number}** {':red_square:' if spin_color == 'red' else ':black_large_square:'}")
+            await msg.edit(content=f"Spinning... **{spin_number}** "
+                                   f"{':red_square:' if spin_color == 'red'
+                                   else ':black_large_square:'}")
         await asyncio.sleep(0.5)
     return msg
