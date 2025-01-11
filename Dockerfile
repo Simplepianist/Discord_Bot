@@ -5,4 +5,4 @@ RUN pip install -r requirements.txt
 
 ENV TZ=Europe/Berlin
 
-CMD ["python3.12", "Streamer.py"]
+CMD ["python3.12", "streamer.py"]
