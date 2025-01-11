@@ -1,4 +1,4 @@
-# Projektname
+# Simple-Bot
 
 ## Übersicht
 
