@@ -203,12 +203,14 @@ async def blackjack_command(ctx: Context | Interaction, bet: int):
                             response: Interaction = await bot.wait_for('interaction',
                                                                        check=lambda
                                   interaction: interaction.user == return_author(ctx))
-                            if ("component_type" in response.data
-                                    and "custom_id" in response.data):
-                                if (user == str(response.user.id)
-                                        and response.data["component_type"] == 2
-                                        and "custom_id" in response.data.keys()):
-                                    checkin = True
+                            if (
+                                ("component_type" in response.data
+                                and "custom_id" in response.data)
+                                and (user == str(response.user.id)
+                                    and response.data["component_type"] == 2
+                                and "custom_id" in response.data.keys())
+                            ):
+                                checkin = True
                         action = response.data["custom_id"]
                         if action == draw_id:
                             bj.draw_another("player")

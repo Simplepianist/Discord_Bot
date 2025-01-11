@@ -122,6 +122,7 @@ class Rob:
                 auszeit = 5
         await self.set_robbing_stop(auszeit, user.id)
 
-    async def set_robbing_stop(self, auszeit: int, userid):
+    @staticmethod
+    async def set_robbing_stop(auszeit: int, userid):
         currentlyGaming.remove(str(userid))
         await db.set_robbing_timeout(userid, auszeit)

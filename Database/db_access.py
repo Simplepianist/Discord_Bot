@@ -51,11 +51,10 @@ class DbController:
         :param params: Optional parameters for the SQL query.
         :return: The result of the query.
         """
-        async with self.pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(query, params)
-                result = await cur.fetchall()
-                return result
+        async with self.pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(query, params)
+            result = await cur.fetchall()
+            return result
 
     async def get_users_with_money(self):
         """

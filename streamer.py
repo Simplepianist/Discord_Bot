@@ -106,7 +106,7 @@ async def on_command_error(ctx: Context, error):
         await send_message(ctx, "Falsche Angabe von Argumenten", delete_after=5)
     elif isinstance(error, MissingRequiredArgument):
         await send_message(ctx, "Fehlende Argumente", delete_after=5)
-    elif isinstance(error, CheckFailure) or isinstance(error, NotOwner):
+    elif isinstance(error, (CheckFailure, NotOwner)):
         await send_message(ctx, "Du hast nicht die Berechtigung, diesen Befehl auszuführen",
                            delete_after=5)
     elif isinstance(error, CommandInvokeError):

@@ -130,9 +130,8 @@ class Blackjack:
             if self.player > 21:
                 return True
             return False
-        if kind == "dealer":
-            if self.dealer > 21:
-                return True
+        if kind == "dealer" and self.dealer > 21:
+            return True
         return False
 
     def is_over(self):
