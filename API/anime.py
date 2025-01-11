@@ -56,4 +56,5 @@ class Anime:
                 return data["data"][0]["images"]["jpg"]["image_url"]
             return False
         except requests.exceptions.RequestException as e:
-            return logging.error("Error fetching image: %s", e)
+            logging.error("Error fetching image: %s", e)
+            return False
