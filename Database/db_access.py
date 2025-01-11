@@ -72,7 +72,7 @@ class DbController:
         :param userid: The ID of the user to create.
         :return: The result of the query.
         """
-        query = f'insert into users values (%s, "user")'
+        query = 'insert into users values (%s, "user")'
         return await self.execute_query(query, (userid,))
 
     async def get_money_for_user(self, userid):
