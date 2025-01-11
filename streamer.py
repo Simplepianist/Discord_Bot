@@ -107,11 +107,15 @@ async def on_command_error(ctx: Context, error):
     elif isinstance(error, MissingRequiredArgument):
         await send_message(ctx, "Fehlende Argumente", delete_after=5)
     elif isinstance(error, CheckFailure) or isinstance(error, NotOwner):
-        await send_message(ctx, "Du hast nicht die Berechtigung, diesen Befehl auszuführen", delete_after=5)
+        await send_message(ctx, "Du hast nicht die Berechtigung, diesen Befehl auszuführen",
+                           delete_after=5)
     elif isinstance(error, CommandInvokeError):
-        await send_message(ctx, "Ein Fehler ist bei der Ausführung des Befehls aufgetreten", delete_after=5)
+        await send_message(ctx, "Ein Fehler ist bei der Ausführung des Befehls aufgetreten",
+                           delete_after=5)
     elif isinstance(error, CommandOnCooldown):
-        await send_message(ctx, f"Dieser Befehl ist auf Abklingzeit. Versuche es in {error.retry_after:.2f} Sekunden erneut.", delete_after=5)
+        await send_message(ctx, f"Dieser Befehl ist auf Abklingzeit. "
+                                f"Versuche es in {error.retry_after:.2f} Sekunden erneut.",
+                           delete_after=5)
     else:
         logging.error("Error: %s (caused by %s)", error, ctx.author.global_name)
 
@@ -702,7 +706,6 @@ async def qotd_slash(ctx: Context | Interaction):
     """
     await qotd_command(ctx)
 #endregion
-
 
 try:
     bot.run(os.environ["token"])

@@ -8,16 +8,12 @@ Functions:
     qotd_command(ctx: Context | Interaction):
         Fetches the quote of the day and sends it as an embed message.
 """
-
 from discord import Interaction
 from discord.ext.commands import Context
-
+from API.quote import animequote, qotd
+from API.anime import get_anime_character_image
 from Util.util_commands import create_social_embed, send_message
-from API.quote import Quote
-from API.anime import Anime
 
-quoteServce = Quote()
-animeServce = Anime()
 
 async def anime_quote(ctx: Context | Interaction):
     """
@@ -26,13 +22,13 @@ async def anime_quote(ctx: Context | Interaction):
     Args:
         ctx (Context | Interaction): The context or interaction from Discord.
     """
-    data = quoteServce.animequote()
+    data = animequote()
     character = data["author"]
     anime = data["anime"]
     quote = data["quote"]
     embed = create_social_embed(ctx, 0x6a329f, "Anime Quote")
     embed.add_field(name=f"*{character}* ({anime})", value=quote)
-    url = animeServce.get_anime_character_image(character)
+    url = get_anime_character_image(character)
     if url:
         embed.set_thumbnail(url=url)
     await send_message(ctx, embed=embed)
@@ -44,7 +40,7 @@ async def qotd_command(ctx: Context | Interaction):
     Args:
         ctx (Context | Interaction): The context or interaction from Discord.
     """
-    data = quoteServce.qotd()
+    data = qotd()
     if not data:
         await send_message(ctx, "Error fetching quote of the day")
         return

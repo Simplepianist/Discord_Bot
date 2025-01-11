@@ -1,10 +1,30 @@
+"""
+Dieses Modul enthält die Klassen AliasSelect und AliasSelectView,
+die Dropdown-Menüs und Ansichten für die Auswahl von
+Alias-Kategorien in einem Discord-Bot bereitstellen.
+"""
 import discord
 from discord import Member
 from Dropdowns.universal_select import UniversalSelect
 
 
 class AliasSelect(UniversalSelect):
+    """
+    A dropdown menu for selecting different alias categories.
+
+    Attributes:
+        user (Member): The Discord member using the dropdown.
+        view (discord.ui.View): The view that this dropdown is part of.
+    """
+
     def __init__(self, user: Member, view):
+        """
+        Initializes the AliasSelect with predefined options and responses.
+
+        Args:
+            user (Member): The Discord member using the dropdown.
+            view (discord.ui.View): The view that this dropdown is part of.
+        """
         options = [
             discord.SelectOption(label="Allgemein",
                                  description="Allgemeine Aliase für den Bot",
@@ -40,6 +60,21 @@ class AliasSelect(UniversalSelect):
 
 
 class AliasSelectView(discord.ui.View):
+    """
+    A view that contains the AliasSelect dropdown.
+
+    Attributes:
+        user (Member): The Discord member using the view.
+        timeout (int): The timeout duration for the view.
+    """
+
     def __init__(self, user: Member, timeout=180):
+        """
+        Initializes the AliasSelectView with a timeout and adds the AliasSelect dropdown.
+
+        Args:
+            user (Member): The Discord member using the view.
+            timeout (int, optional): The timeout duration for the view. Defaults to 180 seconds.
+        """
         super().__init__(timeout=timeout)
         self.add_item(AliasSelect(user, self))

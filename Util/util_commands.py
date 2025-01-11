@@ -9,6 +9,7 @@ from config_loader import Loader
 
 db = DbController()
 
+#region Utility
 def load_config(name):
     with open("jsons/config.json") as f:
         json_file = json.load(f)
@@ -17,11 +18,6 @@ def load_config(name):
     except KeyError:
         pass
     return json_file[name]
-
-
-async def get_money_for_user(user: Member):
-    money_user = await db.get_money_for_user(user.id)
-    return money_user
 
 
 def check_admin(ctx: Context | Interaction):
@@ -41,20 +37,60 @@ def create_select_embed(user):
                      icon_url=user.avatar)
     return embed
 
-"""
-DB Command
-"""
+async def send_message(ctx: Context | Interaction, msg: str = None, view: ui.View = None,
+                       embed: Embed = None,
+                       ephemeral: bool = False, delete_after: int = None):
+    if isinstance(ctx, Context):
+        if ephemeral:
+            return await ctx.channel.send(content=msg, embed=embed, view=view,
+                                          delete_after=delete_after)
+        if delete_after:
+            return await ctx.channel.send(content=msg, embed=embed,
+                                          view=view, delete_after=delete_after)
+        return await ctx.channel.send(content=msg, embed=embed,
+                                      view=view)
+    if isinstance(ctx, Interaction):
+        try:
+            await ctx.response.defer()
+        except HTTPException:
+            pass
+        if view is not None:
+            if ephemeral:
+                return await ctx.followup.send(content=msg, embed=embed,
+                                               view=view, ephemeral=ephemeral)
+            return await ctx.followup.send(content=msg, embed=embed, view=view)
+        if ephemeral:
+            return await ctx.followup.send(content=msg, embed=embed, ephemeral=ephemeral)
+        return await ctx.followup.send(content=msg, embed=embed)
 
 
+def return_author(ctx: Context | Interaction):
+    if isinstance(ctx, Interaction):
+        return ctx.user
+    return ctx.author
+#endregion
+
+#region DB
 async def get_daily(user):
     can_daily = await db.get_daily(user.id)
     return can_daily
+#endregion
 
+#region Gaming
+async def execute_gaming_with_timeout(ctx: Context | Interaction, befehl,
+                                      param_one, param_two=None):
+    try:
+        if param_two is None:
+            await asyncio.wait_for(befehl(ctx, param_one), timeout=300)
+        else:
+            await asyncio.wait_for(befehl(ctx, param_one, param_two), timeout=300)
+    except asyncio.TimeoutError:
+        currentlyGaming.remove(str(return_author(ctx).id))
+        await send_message(ctx, "Du hast zu lange gebraucht. Deine Runde endet.")
 
-"""
-Gaming
-"""
-
+async def get_money_for_user(user: Member):
+    money_user = await db.get_money_for_user(user.id)
+    return money_user
 
 def create_embed(ctx: Context | Interaction, colorcode, kind) -> Embed:
     return basic_embed_element(ctx, colorcode, kind, " is playing")
@@ -101,47 +137,4 @@ def get_first_card(cards) -> int:
         firstworth += int(kind)
 
     return firstworth
-
-
-async def send_message(ctx: Context | Interaction, msg: str = None, view: ui.View = None,
-                       embed: Embed = None,
-                       ephemeral: bool = False, delete_after: int = None):
-    if isinstance(ctx, Context):
-        if ephemeral:
-            return await ctx.channel.send(content=msg, embed=embed, view=view,
-                                          delete_after=delete_after)
-        if delete_after:
-            return await ctx.channel.send(content=msg, embed=embed,
-                                          view=view, delete_after=delete_after)
-        return await ctx.channel.send(content=msg, embed=embed,
-                                      view=view)
-    if isinstance(ctx, Interaction):
-        try:
-            await ctx.response.defer()
-        except HTTPException:
-            pass
-        if view is not None:
-            if ephemeral:
-                return await ctx.followup.send(content=msg, embed=embed,
-                                               view=view, ephemeral=ephemeral)
-            return await ctx.followup.send(content=msg, embed=embed, view=view)
-        if ephemeral:
-            return await ctx.followup.send(content=msg, embed=embed, ephemeral=ephemeral)
-        return await ctx.followup.send(content=msg, embed=embed)
-
-
-def return_author(ctx: Context | Interaction):
-    if isinstance(ctx, Interaction):
-        return ctx.user
-    return ctx.author
-
-async def execute_gaming_with_timeout(ctx: Context | Interaction, befehl,
-                                      param_one, param_two=None):
-    try:
-        if param_two is None:
-            await asyncio.wait_for(befehl(ctx, param_one), timeout=300)
-        else:
-            await asyncio.wait_for(befehl(ctx, param_one, param_two), timeout=300)
-    except asyncio.TimeoutError:
-        currentlyGaming.remove(str(return_author(ctx).id))
-        await send_message(ctx, "Du hast zu lange gebraucht. Deine Runde endet.")
+#endregion

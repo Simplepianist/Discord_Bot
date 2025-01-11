@@ -1,10 +1,28 @@
+"""
+Dieses Modul enthält die Klassen RuleSelect und RuleSelectView,
+die für die Erstellung und Verwaltung von Dropdown-Menüs in einem Discord-Bot verwendet werden.
+"""
 import discord
 from discord import Member
 from Dropdowns.universal_select import UniversalSelect
 
 
 class RuleSelect(UniversalSelect):
+    """
+        Eine Klasse, die ein Dropdown-Menü für Regeloptionen erstellt.
+
+        Attribute:
+            user (Member): Der Benutzer, der das Dropdown-Menü verwendet.
+            view (discord.ui.View): Die Ansicht, die das Dropdown-Menü enthält.
+        """
     def __init__(self, user: Member, view):
+        """
+        Initialisiert die RuleSelect-Klasse mit den gegebenen Optionen und Antworten.
+
+        Args:
+            user (Member): Der Benutzer, der das Dropdown-Menü verwendet.
+            view (discord.ui.View): Die Ansicht, die das Dropdown-Menü enthält.
+        """
         options = [
             discord.SelectOption(label="Blackjack",
                                  description="Regeln für Blackjack",
@@ -76,6 +94,22 @@ class RuleSelect(UniversalSelect):
 
 
 class RuleSelectView(discord.ui.View):
+    """
+        Eine Klasse, die eine Ansicht für das RuleSelect-Dropdown-Menü erstellt.
+
+        Attribute:
+            user (Member): Der Benutzer, der die Ansicht verwendet.
+            timeout (int): Die Zeit in Sekunden, nach der die Ansicht abläuft.
+    """
+
     def __init__(self, user: Member, timeout=180):
+        """
+        Initialisiert die RuleSelectView-Klasse mit dem gegebenen Benutzer und Timeout.
+
+        Args:
+            user (Member): Der Benutzer, der die Ansicht verwendet.
+            timeout (int, optional): Die Zeit in Sekunden,
+            nach der die Ansicht abläuft. Standard ist 180 Sekunden.
+        """
         super().__init__(timeout=timeout)
         self.add_item(RuleSelect(user, self))

@@ -1,5 +1,4 @@
 import time
-
 from discord import Interaction, Member, Embed, Colour, ButtonStyle, ui
 from discord.ext.commands import Context
 from discord.ui import Button
@@ -8,7 +7,6 @@ from Game.higher_lower import HigherLower
 from Game.rob import Rob
 
 from Game.roulette import validate_entry, spinning, play_roulette
-import Util.variables
 from Util.util_commands import return_author, db, send_message, \
     get_daily, get_money_for_user, can_play, create_embed, get_first_card, load_config
 from Util.variables import currentlyGaming, bot

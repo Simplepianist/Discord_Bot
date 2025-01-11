@@ -163,11 +163,10 @@ class Blackjack:
 
     def get_money(self):
         winner = self.won()
-        if winner == "draw":
-            return self.bet
         if winner == "player":
             return int(self.bet) * 2
         if winner == "dealer":
             return 0
         if winner == "doppelt":
             return int(int(self.bet) * 2.5 - self.bet)
+        return self.bet

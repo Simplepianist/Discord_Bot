@@ -1,8 +1,22 @@
+"""
+Dieses Modul enthält verschiedene Variablen und Konfigurationsfunktionen für den Discord-Bot.
+"""
+
 import json
 import discord
 from discord.ext import commands
 
 def load_config(name):
+    """
+    Lädt die Konfiguration aus der Datei `jsons/config.json`
+    und gibt den Wert für den angegebenen Namen zurück.
+
+    Args:
+        name (str): Der Name des Konfigurationswerts, der zurückgegeben werden soll.
+
+    Returns:
+        dict: Der Konfigurationswert für den angegebenen Namen.
+    """
     with open("jsons/config.json") as f:
         json_file = json.load(f)
     try:

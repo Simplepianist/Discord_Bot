@@ -1,3 +1,7 @@
+"""
+Dieses Modul enthält die Definition der `DCView`-Klasse,
+die eine benutzerdefinierte Discord-UI-Ansicht darstellt.
+"""
 import typing
 import discord
 from discord.ui import View

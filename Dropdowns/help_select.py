@@ -1,10 +1,29 @@
+"""
+Dieses Modul enthält die Klassen HelpSelect und HelpSelectView,
+die für die Erstellung und Verwaltung von Dropdown-Menüs in einem Discord-Bot verwendet werden.
+"""
+
 import discord
 from discord import Member
 from Dropdowns.universal_select import UniversalSelect
 
-
 class HelpSelect(UniversalSelect):
+    """
+    Eine Klasse, die ein Dropdown-Menü für Hilfeoptionen erstellt.
+
+    Attribute:
+        user (Member): Der Benutzer, der das Dropdown-Menü verwendet.
+        view (discord.ui.View): Die Ansicht, die das Dropdown-Menü enthält.
+    """
+
     def __init__(self, user: Member, view):
+        """
+        Initialisiert die HelpSelect-Klasse mit den gegebenen Optionen und Antworten.
+
+        Args:
+            user (Member): Der Benutzer, der das Dropdown-Menü verwendet.
+            view (discord.ui.View): Die Ansicht, die das Dropdown-Menü enthält.
+        """
         options = [
             discord.SelectOption(label="Allgemein",
                                  description="Allgemeine Commands für den Bot",
@@ -40,8 +59,23 @@ class HelpSelect(UniversalSelect):
             ]}
         super().__init__(user, options, response, view)
 
-
 class HelpSelectView(discord.ui.View):
+    """
+    Eine Klasse, die eine Ansicht für das HelpSelect-Dropdown-Menü erstellt.
+
+    Attribute:
+        user (Member): Der Benutzer, der die Ansicht verwendet.
+        timeout (int): Die Zeit in Sekunden, nach der die Ansicht abläuft.
+    """
+
     def __init__(self, user: Member, timeout=180):
+        """
+        Initialisiert die HelpSelectView-Klasse mit dem gegebenen Benutzer und Timeout.
+
+        Args:
+            user (Member): Der Benutzer, der die Ansicht verwendet.
+            timeout (int, optional): Die Zeit in Sekunden,
+            nach der die Ansicht abläuft. Standard ist 180 Sekunden.
+        """
         super().__init__(timeout=timeout)
         self.add_item(HelpSelect(user, self))
