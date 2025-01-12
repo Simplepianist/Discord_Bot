@@ -1,4 +1,5 @@
 # Simple-Bot
+[![CodeFactor](https://www.codefactor.io/repository/github/simplepianist/discord_bot/badge)](https://www.codefactor.io/repository/github/simplepianist/discord_bot)
 
 ## Übersicht
 
