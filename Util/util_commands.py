@@ -2,7 +2,7 @@ import asyncio
 import json
 from http.client import HTTPException
 from discord import Interaction, Member, Embed, Colour, ui
-from discord.ext.commands import Context
+from discord.ext.commands import Context, check
 from Database.db_access import DbController
 from Util.variables import botRole, currentlyGaming, OWNER
 from config_loader import Loader
@@ -10,6 +10,11 @@ from config_loader import Loader
 db = DbController()
 
 #region Utility
+def has_role():
+    async def predicate(ctx: Context):
+        return botRole in [y.name.lower() for y in ctx.author.roles]
+    return check(predicate)
+
 def load_config(name):
     with open("jsons/config.json") as f:
         json_file = json.load(f)
