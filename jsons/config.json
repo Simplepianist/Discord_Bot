@@ -1,0 +1,12 @@
+{
+  "streamURL": "https://twitch.tv/simplebox",
+  "inviteLink": "https://discord.gg/Y86sPWQ2wF",
+  "botrole": "privatebot",
+  "ownerId": 325779745436467201,
+  "waifuit": "",
+  "test": true,
+  "embed": {
+    "embeds_thumbnail": "https://cdn.discordapp.com/avatars/1005417146949574687/30e8b8fe5212ad1e20d7902bb41f4c26.webp?size=128",
+    "embeds_footertext": "Powered by simplebox"
+  }
+}

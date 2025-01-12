@@ -1,22 +1,36 @@
+"""
+Dieses Modul enthält die Klasse `Quote`,
+die Zitate von einer Anime-API und der ZenQuotes-API abruft.
+"""
+import logging
+from typing import Any
+
 import requests
-from Util.util_commands import load_config
-from API.anime import Anime
+from API.anime import daily_anime_quote
 
+def animequote():
+    """
+    Ruft das tägliche Anime-Zitat ab.
 
-class Quote():
-    def __init__(self):
-        self.anime = Anime()
-        self.qotd_Url = "https://zenquotes.io/api/today"
-    def anime_Quote(self):
-        return self.anime.daily_anime_quote()
+    Returns:
+        str: Das tägliche Anime-Zitat.
+    """
+    return daily_anime_quote()
 
-    def qotd(self):
-        try:
-            response = requests.get(self.qotd_Url)
-            if response.status_code == 200:
-                data = response.json()
-                return data[0]
-            else:
-                return False
-        except Exception as e:
-            return str(e)
+def qotd() -> Any | None:
+    """
+    Ruft das Zitat des Tages von der ZenQuotes-API ab.
+
+    Returns:
+        dict: Das Zitat des Tages, wenn die Anfrage erfolgreich ist.
+        bool: False, wenn die Anfrage fehlschlägt.
+    """
+    try:
+        response = requests.get("https://zenquotes.io/api/today", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return data[0]
+        return None
+    except requests.exceptions.RequestException as e:
+        logging.error("Fehler beim Abrufen des Zitats: %s", e)
+        return None

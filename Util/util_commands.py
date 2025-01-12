@@ -1,82 +1,128 @@
 import asyncio
-
-from discord import Interaction
+import json
+from http.client import HTTPException
+from discord import Interaction, Member, Embed, Colour, ui
 from discord.ext.commands import Context
-from Database.db_access import DB_Controller
-from Util.variables import *
+from Database.db_access import DbController
+from Util.variables import botRole, currentlyGaming, OWNER
+from config_loader import Loader
 
-db = DB_Controller(test)
+db = DbController()
 
-
+#region Utility
 def load_config(name):
     with open("jsons/config.json") as f:
         json_file = json.load(f)
     try:
-        json_file["embed"]["embeds_footerpic"] = owner.avatar
-    except:
+        json_file["embed"]["embeds_footerpic"] = OWNER.avatar
+    except KeyError:
         pass
     return json_file[name]
 
 
-def get_money_for_user(user: discord.Member):
-    global user_money_dir
-    money_user = db.get_money_for_user(user.id)
-    return money_user
-
-
-def checkAdmin(ctx: Context | Interaction):
+def check_admin(ctx: Context | Interaction):
     if botRole in [y.name.lower() for y in return_author(ctx).roles]:
         return True
-    else:
-        return False
+    return False
 
 
-"""
-DB Command
-"""
+def create_select_embed(user):
+    embed = Embed(title="Eine kleine Hilfe zu den alias Commands",
+                          colour=Colour(0x0446b0),
+                          description="hier erfährst du mehr zu "
+                                      "den einzelnen alias Commands")
+    loaded_config = Loader(user).load_config("embed")
+    embed.set_thumbnail(url=loaded_config["embeds_thumbnail"])
+    embed.set_footer(text="Asked by " + user.name,
+                     icon_url=user.avatar)
+    return embed
+
+async def send_message(ctx: Context | Interaction, msg: str = None, view: ui.View = None,
+                       embed: Embed = None,
+                       ephemeral: bool = False, delete_after: int = None):
+    if isinstance(ctx, Context):
+        if ephemeral:
+            return await ctx.channel.send(content=msg, embed=embed, view=view,
+                                          delete_after=delete_after)
+        if delete_after:
+            return await ctx.channel.send(content=msg, embed=embed,
+                                          view=view, delete_after=delete_after)
+        return await ctx.channel.send(content=msg, embed=embed,
+                                      view=view)
+    if isinstance(ctx, Interaction):
+        try:
+            await ctx.response.defer()
+        except HTTPException:
+            pass
+        if view is not None:
+            if ephemeral:
+                return await ctx.followup.send(content=msg, embed=embed,
+                                               view=view, ephemeral=ephemeral)
+            return await ctx.followup.send(content=msg, embed=embed, view=view)
+        if ephemeral:
+            return await ctx.followup.send(content=msg, embed=embed, ephemeral=ephemeral)
+        return await ctx.followup.send(content=msg, embed=embed)
 
 
-def get_daily(user):
-    can_daily = db.get_daily(user.id)
+def return_author(ctx: Context | Interaction):
+    if isinstance(ctx, Interaction):
+        return ctx.user
+    return ctx.author
+#endregion
+
+#region DB
+async def get_daily(user):
+    can_daily = await db.get_daily(user.id)
     return can_daily
+#endregion
 
+#region Gaming
+async def execute_gaming_with_timeout(ctx: Context | Interaction, befehl,
+                                      param_one, param_two=None):
+    try:
+        if param_two is None:
+            await asyncio.wait_for(befehl(ctx, param_one), timeout=300)
+        else:
+            await asyncio.wait_for(befehl(ctx, param_one, param_two), timeout=300)
+    except asyncio.TimeoutError:
+        currentlyGaming.remove(str(return_author(ctx).id))
+        await send_message(ctx, "Du hast zu lange gebraucht. Deine Runde endet.")
 
-"""
-Gaming
-"""
+async def get_money_for_user(user: Member):
+    money_user = await db.get_money_for_user(user.id)
+    return money_user
 
-
-def create_embed(ctx: Context | Interaction, colorcode, kind) -> discord.Embed:
+def create_embed(ctx: Context | Interaction, colorcode, kind) -> Embed:
     return basic_embed_element(ctx, colorcode, kind, " is playing")
 
 
-def create_social_embed(ctx: Context | Interaction, colorcode, kind) -> discord.Embed:
+def create_social_embed(ctx: Context | Interaction, colorcode, kind) -> Embed:
     return basic_embed_element(ctx, colorcode, kind, " has asked")
 
 
-def basic_embed_element(ctx: Context | Interaction, colorcode, kind, text) -> discord.Embed:
-    embed = discord.Embed(title=kind, colour=discord.Colour(colorcode))
+def basic_embed_element(ctx: Context | Interaction, colorcode, kind, text) -> Embed:
+    embed = Embed(title=kind, colour=Colour(colorcode))
     embed.set_footer(text=return_author(ctx).name + text,
                      icon_url=return_author(ctx).avatar)
     return embed
 
 
-def can_play(ctx: Context | Interaction, bet):
-    canPlay = True
+async def can_play(ctx: Context | Interaction, bet):
+    playable = True
     has_enough = True
     is_int = True
-    user_money = get_money_for_user(return_author(ctx))
+    user_money = await get_money_for_user(return_author(ctx))
     try:
         bet = int(bet)
-    except:
-        canPlay = False
+    except ValueError:
+        playable = False
         is_int = False
     if is_int:
         if bet < 1:
-            canPlay = False
+            playable = False
         if bet > user_money:
             has_enough = False
-    return [canPlay, has_enough]
+    return [playable, has_enough]
 
 
 def get_first_card(cards) -> int:
@@ -91,44 +137,4 @@ def get_first_card(cards) -> int:
         firstworth += int(kind)
 
     return firstworth
-
-
-async def send_message(ctx: Context | Interaction, msg: str = None, view: discord.ui.View = None,
-                       embed: discord.Embed = None, ephemeral: bool = False, delete_after: int = None):
-    if type(ctx) is Context:
-        if ephemeral:
-            return await ctx.channel.send(content=msg, embed=embed, view=view,
-                                          delete_after=delete_after)
-        else:
-            return await ctx.channel.send(content=msg, embed=embed, view=view, delete_after=delete_after)
-    elif type(ctx) is Interaction:
-        try:
-            await ctx.response.defer()
-        except:
-            pass
-        if view is not None:
-            if ephemeral:
-                return await ctx.followup.send(content=msg, embed=embed, view=view, ephemeral=ephemeral)
-            else:
-                return await ctx.followup.send(content=msg, embed=embed, view=view)
-        else:
-            if ephemeral:
-                return await ctx.followup.send(content=msg, embed=embed, ephemeral=ephemeral)
-            else:
-                return await ctx.followup.send(content=msg, embed=embed)
-
-
-def return_author(ctx: Context | Interaction):
-    if type(ctx) is Interaction:
-        return ctx.user
-    return ctx.author
-
-async def execute_gaming_with_timeout(ctx: Context | Interaction, befehl, param_one, param_two=None):
-    try:
-        if param_two is None:
-            await asyncio.wait_for(befehl(ctx, param_one), timeout=300)
-        else:
-            await asyncio.wait_for(befehl(ctx, param_one, param_two), timeout=300)
-    except asyncio.TimeoutError:
-        currentlyGaming.remove(str(return_author(ctx).id))
-        await send_message(ctx, "Du hast zu lange gebraucht. Deine Runde endet.")
+#endregion
