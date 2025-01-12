@@ -71,7 +71,7 @@ async def load_cogs():
     await bot.load_extension("cogs.utility_cog")
 
 async def run_fastapi():
-    config = uvicorn.Config(app, host="0.0.0.0", port=8000)
+    config = uvicorn.Config(app, host="127.0.0.1", port=8000)
     server = uvicorn.Server(config)
     await server.serve()
 
