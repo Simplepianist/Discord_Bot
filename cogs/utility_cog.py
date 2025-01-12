@@ -28,7 +28,7 @@ class UtilityCog(commands.Cog, name="Utility"):
 
     # Slash commands
     @app_commands.command(name="stream", description="Streamlink von Simplebox")
-    async def stream(self, ctx: Context | discord.Interaction):
+    async def _stream(self, ctx: Context | discord.Interaction):
         await stream_command(ctx)
 
     @app_commands.command(name="help", description="Hilfe für alle Befehle")
