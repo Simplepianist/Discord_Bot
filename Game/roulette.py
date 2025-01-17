@@ -88,7 +88,7 @@ async def spinning(ctx: Context | Interaction):
                                               f"**{spin_number}**  :black_large_square:")
         else:
             await msg.edit(content=f"Spinning... **{spin_number}** "
-                                   f"{':red_square:' if spin_color == 'red'
-                                   else ':black_large_square:'}")
+                                   f"""{':red_square:' if spin_color == 'red'
+                                   else ':black_large_square:'}""")
         await asyncio.sleep(0.5)
     return msg

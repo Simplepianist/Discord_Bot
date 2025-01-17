@@ -1,13 +1,10 @@
-import discord.ext.commands
 from discord.ext.commands import Command
 from fastapi import APIRouter
-from Database.db_access import DbController
-
 
 class API:
-    def __init__(self, bot):
-        self.bot: discord.ext.commands.Bot = bot
-        self.db = DbController()
+    def __init__(self, bot, db):
+        self.bot = bot
+        self.db = db
         self.router = APIRouter()
         self.router.add_api_route("/scoreboard", self.scoreboard, methods=["GET"])
         self.router.add_api_route("/commands", self.command_list, methods=["GET"])

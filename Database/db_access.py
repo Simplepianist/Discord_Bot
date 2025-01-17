@@ -40,8 +40,9 @@ class DbController:
         """
         Close the connection pool.
         """
-        self.pool.close()
-        await self.pool.wait_closed()
+        if self.pool:
+            self.pool.close()  # Close the pool
+            await self.pool.wait_closed()  # Wait for all connections to close
 
     async def execute_query(self, query, params=None):
         """

@@ -1,20 +1,15 @@
 import os
 import asyncio
 import logging
-import uvicorn
-from fastapi import FastAPI
+import threading
+
 from discord import Streaming
 from discord.app_commands import CommandOnCooldown, CommandNotFound, \
     MissingPermissions
 from discord.ext.commands import BadArgument, MissingRequiredArgument, \
     CheckFailure, NotOwner
-from API.content_api import API
 from Util import variables
-from Util.variables import streamURL
-from Util.util_commands import db
 from Util.variables import bot
-
-app = FastAPI()
 
 @bot.event
 async def on_ready():
@@ -30,16 +25,18 @@ async def on_ready():
     - Setzt den Besitzer des Bots.
     - Ändert die Präsenz des Bots zu einem Streaming-Status mit einem bestimmten Namen und URL.
     """
-    await db.init_pool()
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
-    register_endpoints()
+    await bot.db.init_pool()
+    fastapi_thread = threading.Thread(target=lambda: asyncio.run(bot.run_fastapi(bot)))
+    fastapi_thread.start()
     try:
         amount = await bot.tree.sync()
-        logging.info("Sync gestartet (%s Commands) (Kann bis zu 1h dauern)", {len(amount)})
+        logging.info(f"Sync gestartet ({len(amount)} Commands) (Kann bis zu 1h dauern)")
     except Exception as e:
         logging.error(e)
         logging.error("Fehler beim Syncen der Commands (probably duplicates)")
-    await bot.change_presence(activity=Streaming(name=".help", url=streamURL))
+
+    variables.owner = await bot.fetch_user(325779745436467201)
+    await bot.change_presence(activity=Streaming(name=".help", url=variables.streamURL))
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -60,9 +57,6 @@ async def on_command_error(ctx, error):
     else:
         logging.error(error)
 
-def register_endpoints():
-    api = API(bot)
-    app.include_router(api.router)
 
 async def load_cogs():
     await bot.load_extension("cogs.admin_cog")
@@ -70,27 +64,16 @@ async def load_cogs():
     await bot.load_extension("cogs.social_cog")
     await bot.load_extension("cogs.utility_cog")
 
-async def run_fastapi():
-    config = uvicorn.Config(app, host="127.0.0.1", port=8000)
-    server = uvicorn.Server(config)
-    await server.serve()
 
 async def main():
     await load_cogs()
-    await asyncio.gather(bot.start(os.environ["token"]), run_fastapi())
+    try:
+        await bot.start(os.environ["token"])
+    finally:
+        if not bot.is_closed():
+            await bot.close()
+
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    finally:
-        if not variables.SHUTDOWN_INITIATED:
-            # Protokolliert, dass der Shutdown-Prozess gestartet wird
-            logging.info("Shutting down")
-            # Schließt den Datenbank-Pool
-            db.close_pool()
-            # Schließt den Bot
-            bot.close()
-            # Protokolliert, dass der Shutdown-Prozess abgeschlossen ist
-            logging.info("Shutdown complete")
-        # Beendet das Logging
-        logging.shutdown()
+    asyncio.run(main())
+

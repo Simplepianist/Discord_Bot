@@ -3,8 +3,8 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ext.commands.context import Context
 
-from Commands.main_commands import (help_command, alias_command, ping_command,
-                                    invite_command, stream_command)
+from Commands.main_commands import help_command, alias_command, ping_command, invite_command, stream_command
+
 
 class UtilityCog(commands.Cog, name="Utility"):
     def __init__(self, bot):
@@ -26,10 +26,11 @@ class UtilityCog(commands.Cog, name="Utility"):
     async def _invite(self, ctx: Context | discord.Interaction):
         await invite_command(ctx)
 
-    # Slash commands
-    @app_commands.command(name="stream", description="Streamlink von Simplebox")
+    @commands.command(name="stream", description="Streamlink von Simplebox")
     async def _stream(self, ctx: Context | discord.Interaction):
         await stream_command(ctx)
+
+    # Slash commands
 
     @app_commands.command(name="help", description="Hilfe für alle Befehle")
     async def help(self, ctx: Context | discord.Interaction):

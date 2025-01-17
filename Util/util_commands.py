@@ -3,11 +3,10 @@ import json
 from http.client import HTTPException
 from discord import Interaction, Member, Embed, Colour, ui
 from discord.ext.commands import Context, check
-from Database.db_access import DbController
-from Util.variables import botRole, currentlyGaming, OWNER
+from Util.variables import botRole, currentlyGaming, OWNER, bot
 from config_loader import Loader
 
-db = DbController()
+db = bot.db
 
 #region Utility
 def has_role():
