@@ -30,8 +30,6 @@ async def shutdown_command():
     Returns:
     None
     """
-    await db.close_pool()
-    logging.info("Closed Connection (DB)")
     await bot.close()
     logging.info("Bot stopped")
 

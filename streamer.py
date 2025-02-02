@@ -14,13 +14,19 @@ Modules:
 import os
 import asyncio
 import logging
-import threading
+import sys
 
 from discord import Streaming
 from discord.app_commands import CommandOnCooldown, CommandNotFound, MissingPermissions
 from discord.ext.commands import BadArgument, MissingRequiredArgument, CheckFailure, NotOwner
+from fastapi import FastAPI
+from uvicorn import Config, Server
+
+from API.content_api import API
 from Util import variables
 from Util.variables import bot
+
+api_server: Server
 
 @bot.event
 async def on_ready():
@@ -36,12 +42,10 @@ async def on_ready():
     - Sets the bot's owner.
     - Changes the bot's presence to a streaming status with a specific name and URL.
     """
-    await bot.db.init_pool()
-    fastapi_thread = threading.Thread(target=lambda: asyncio.run(bot.run_fastapi(bot)))
-    fastapi_thread.start()
+
     try:
         amount = await bot.tree.sync()
-        logging.info("Sync gestartet (%d Commands) (Kann bis zu 1h dauern)" % len(amount))
+        logging.info(f"Sync gestartet ({len(amount)} Commands) (Kann bis zu 1h dauern)")
     except Exception as e:
         logging.error(e)
         logging.error("Fehler beim Syncen der Commands (probably duplicates)")
@@ -94,18 +98,35 @@ async def load_cogs():
     await bot.load_extension("cogs.utility_cog")
 
 async def main():
-    """
-    The main entry point for the bot.
+    await asyncio.gather(bot_runner(), api_runner())
 
-    Loads the cogs and starts the bot using the token from the environment variables.
-    Ensures the bot is properly closed if an error occurs.
-    """
+async def api_runner():
+    global api_server
+    app = FastAPI()
+    app.include_router(API().router)
+    app.state.bot = bot  # Share bot instance
+    app.state.db = bot.db  # Share connection pool
+    config = Config(app, host="127.0.0.1", port=8000)
+    api_server = Server(config)
+    await bot.db.init_pool()
+    await api_server.serve()
+
+async def api_shutdown():
+    if api_server:
+        await api_server.shutdown()
+
+async def bot_runner():
     await load_cogs()
     try:
         await bot.start(os.environ["token"])
     finally:
-        if not bot.is_closed():
-            await bot.close()
+        await bot.close()
+        await api_shutdown()
+        asyncio.get_event_loop().stop()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except RuntimeError:
+        logging.info("Bot stopped")
+        sys.exit(0)

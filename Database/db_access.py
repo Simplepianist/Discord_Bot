@@ -43,6 +43,7 @@ class DbController:
         if self.pool:
             self.pool.close()  # Close the pool
             await self.pool.wait_closed()  # Wait for all connections to close
+            logging.info("Database connection pool closed")
 
     async def execute_query(self, query, params=None):
         """

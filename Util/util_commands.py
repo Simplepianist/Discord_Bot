@@ -16,7 +16,6 @@ from config_loader import Loader
 db = bot.db
 
 #region Utility
-
 def has_role():
     """
     Check if the user has the required role.
