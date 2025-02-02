@@ -1,8 +1,36 @@
+"""
+This module defines the API class for handling API routes related to the bot and database.
+
+Classes:
+    API: A class to handle API routes for scoreboard and command list.
+
+Methods:
+    __init__(self, bot, db): Initializes the API class with bot and database instances.
+    scoreboard(self): Asynchronously retrieves and returns the scoreboard data.
+    command_list(self): Asynchronously retrieves and returns the list of commands.
+"""
+
 from discord.ext.commands import Command
 from fastapi import APIRouter
 
 class API:
+    """
+    A class to handle API routes for scoreboard and command list.
+
+    Attributes:
+        bot: The bot instance.
+        db: The database instance.
+        router: The FastAPI router instance.
+    """
+
     def __init__(self, bot, db):
+        """
+        Initializes the API class with bot and database instances.
+
+        Args:
+            bot: The bot instance.
+            db: The database instance.
+        """
         self.bot = bot
         self.db = db
         self.router = APIRouter()
@@ -10,6 +38,12 @@ class API:
         self.router.add_api_route("/commands", self.command_list, methods=["GET"])
 
     async def scoreboard(self):
+        """
+        Asynchronously retrieves and returns the scoreboard data.
+
+        Returns:
+            A list of dictionaries containing usernames and their corresponding money.
+        """
         scorelist = sorted(await self.db.get_users_with_money(), key=lambda x: x[1], reverse=True)
         result = []
         for score in scorelist:
@@ -18,6 +52,12 @@ class API:
         return result
 
     async def command_list(self):
+        """
+        Asynchronously retrieves and returns the list of commands.
+
+        Returns:
+            A list of dictionaries containing cog names and their corresponding commands.
+        """
         result = []
         for cog_name, cog in self.bot.cogs.items():
             commands = []

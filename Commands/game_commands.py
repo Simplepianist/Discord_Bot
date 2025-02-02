@@ -1,3 +1,18 @@
+"""
+This module contains various game commands for a Discord bot, including commands for
+robbery, displaying the scoreboard, daily rewards, sending money, checking money,
+and playing games like blackjack, roulette, and higher-lower.
+
+Commands:
+- rob_command: Handles the rob command.
+- scoreboard_command: Displays the scoreboard.
+- daily_command: Processes the daily command.
+- send_command: Processes the send command.
+- money_command: Shows the money of a user.
+- blackjack_command: Processes the blackjack command.
+- roulette_command: Processes the roulette command.
+- higher_lower_command: Processes the higher-lower command.
+"""
 import time
 from discord import Interaction, Member, Embed, Colour, ButtonStyle, ui
 from discord.ext.commands import Context

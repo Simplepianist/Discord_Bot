@@ -5,7 +5,7 @@ Dieses Modul enthält verschiedene Variablen und Konfigurationsfunktionen für d
 import json
 import logging
 import discord
-from SimpleBot import SimpleBot
+from simplebot import Simplebot
 
 
 def load_config(name):
@@ -34,7 +34,7 @@ intents.message_content = True
 currentlyGaming = []
 SHUTDOWN_INITIATED = False
 logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
-bot = SimpleBot(command_prefix=".", help_command=None, intents=intents, case_insensitive=True)
+bot = Simplebot(command_prefix=".", help_command=None, intents=intents, case_insensitive=True)
 OWNER = discord.Member
 botRole = load_config("botrole")
 streamURL = load_config("streamURL")
