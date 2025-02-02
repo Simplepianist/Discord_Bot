@@ -44,7 +44,7 @@ class Simplebot(commands.Bot):
         logging.info("Starting FastAPI server")
         app = FastAPI()
         app.include_router(API(bot, self.db).router)
-        config = Config(app, host="0.0.0.0", port=8000)
+        config = Config(app, host="127.0.0.1", port=8000)
         self.api_server = Server(config)
         await self.api_server.serve()
 
