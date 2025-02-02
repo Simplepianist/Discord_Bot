@@ -19,11 +19,13 @@ import sys
 from discord import Streaming
 from discord.app_commands import CommandOnCooldown, CommandNotFound, MissingPermissions
 from discord.ext.commands import BadArgument, MissingRequiredArgument, CheckFailure, NotOwner
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from fastapi.middleware import Middleware
 from uvicorn import Config, Server
 
 from API.content_api import API
 from Util import variables
+from Util.util_commands import validate_api_key
 from Util.variables import bot
 
 api_server: Server
@@ -102,7 +104,7 @@ async def main():
 
 async def api_runner():
     global api_server
-    app = FastAPI()
+    app = FastAPI(dependencies=[Depends(validate_api_key)])
     app.include_router(API().router)
     app.state.bot = bot  # Share bot instance
     app.state.db = bot.db  # Share connection pool
