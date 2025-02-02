@@ -20,7 +20,6 @@ from discord import Streaming
 from discord.app_commands import CommandOnCooldown, CommandNotFound, MissingPermissions
 from discord.ext.commands import BadArgument, MissingRequiredArgument, CheckFailure, NotOwner
 from fastapi import FastAPI, Depends
-from fastapi.middleware import Middleware
 from uvicorn import Config, Server
 
 from API.content_api import API
@@ -47,7 +46,7 @@ async def on_ready():
 
     try:
         amount = await bot.tree.sync()
-        logging.info(f"Sync gestartet ({len(amount)} Commands) (Kann bis zu 1h dauern)")
+        logging.info(f"Sync gestartet (%s Commands) (Kann bis zu 1h dauern)", len(amount))
     except Exception as e:
         logging.error(e)
         logging.error("Fehler beim Syncen der Commands (probably duplicates)")

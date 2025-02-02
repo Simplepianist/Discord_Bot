@@ -4,7 +4,6 @@ Utility and Gaming Commands Module
 This module contains utility functions and gaming-related commands for a Discord bot.
 It includes functions for role checking, configuration loading, message sending, and gaming logic.
 """
-
 import asyncio
 import json
 import os
@@ -12,10 +11,8 @@ from http.client import HTTPException
 from fastapi import HTTPException as fastapiHTTPException, Security
 from fastapi.security import api_key
 from starlette import status
-from starlette.middleware.base import BaseHTTPMiddleware
 from discord import Interaction, Member, Embed, Colour, ui
 from discord.ext.commands import Context, check
-from requests import Request
 
 from Util.variables import botRole, currentlyGaming, OWNER, bot
 from config_loader import Loader
@@ -293,9 +290,7 @@ def get_first_card(cards) -> int:
 #endregion
 
 #region API
-
 api_key_header = api_key.APIKeyHeader(name="X-API-KEY")
-
 
 async def validate_api_key(key: str = Security(api_key_header)):
     if key != os.environ["API_KEY"]:
