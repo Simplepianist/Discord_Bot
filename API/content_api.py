@@ -47,7 +47,7 @@ async def scoreboard(request: Request):
         result.append({"username": user.name, "money": score[1]})
     return result
 
-async def command_list(self, request: Request):
+async def command_list(request: Request):
     """
     Asynchronously retrieves and returns the list of commands.
 
