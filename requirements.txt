@@ -3,5 +3,5 @@ aiomysql==0.2.0
 requests==2.32.3
 fastapi~=0.115.6
 uvicorn~=0.34.0
-urllib3==2.2.2
-six==1.15.0
+urllib3==2.3.0
+six==1.17.0
