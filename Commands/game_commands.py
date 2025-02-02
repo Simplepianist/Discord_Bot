@@ -183,6 +183,7 @@ async def blackjack_command(ctx: Context | Interaction, bet: int):
             firstplayer = True
             has_interaction = True
             responded = False
+            response: Interaction | None = None
             bj = Blackjack(bet)
             bj.firstdraw()
             dealerpoints = get_first_card(bj.dealerdrawn)
@@ -208,15 +209,15 @@ async def blackjack_command(ctx: Context | Interaction, bet: int):
                         blackjack_msg = await send_message(ctx, embed=embed, view=blackjack_view)
                         firstplayer = not firstplayer
                     else:
-                        await response.response.edit_message(embed=embed, view=blackjack_view)
+                        if response:
+                            await response.response.edit_message(embed=embed, view=blackjack_view)
                     checkin = False
                     if bj.natural_player:
                         bj.stand("player")
                         has_interaction = False
                     else:
                         while not checkin:
-                            response: Interaction = await bot.wait_for('interaction',
-                                                                       check=lambda
+                            response = await bot.wait_for('interaction', check=lambda
                                   interaction: interaction.user == return_author(ctx))
                             if (
                                 ("component_type" in response.data
