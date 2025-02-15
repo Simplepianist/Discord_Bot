@@ -5,4 +5,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 ENV TZ=Europe/Berlin
 
-CMD ["python3.12", "streamer.py"]
+CMD ["python3.13", "streamer.py"]
