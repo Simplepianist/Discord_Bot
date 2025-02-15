@@ -9,9 +9,10 @@ Methods:
     scoreboard(self): Asynchronously retrieves and returns the scoreboard data.
     command_list(self): Asynchronously retrieves and returns the list of commands.
 """
-
+import discord
 from discord.ext.commands import Command
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Path
+
 
 class API:
     """
@@ -28,10 +29,10 @@ class API:
         Initializes the API class with bot and database instances.
         """
         self.router = APIRouter()
-        self.router.add_api_route("/scoreboard", scoreboard, methods=["GET"])
+        self.router.add_api_route("/scoreboard/{user_id}", scoreboard, methods=["GET"])
         self.router.add_api_route("/commands", command_list, methods=["GET"])
 
-async def scoreboard(request: Request):
+async def scoreboard(request: Request, user_id: int = Path(description="The user ID to retrieve the scoreboard for.")):
     """
     Asynchronously retrieves and returns the scoreboard data.
 
@@ -42,9 +43,12 @@ async def scoreboard(request: Request):
     bot = request.app.state.bot
     scorelist = sorted(await db.get_users_with_money(), key=lambda x: x[1], reverse=True)
     result = []
-    for score in scorelist:
-        user = bot.get_user(int(score[0])) or await bot.fetch_user(int(score[0]))
-        result.append({"username": user.name, "money": score[1]})
+    for i, score in enumerate(scorelist, start=1):
+        user: discord.Member = bot.get_user(int(score[0])) or await bot.fetch_user(int(score[0]))
+        if i <= 10 or (user_id and user.id == user_id):
+            result.append({"position": i, "username": user.display_name, "is_searched": user.id == user_id,
+                           "money":
+                score[1]})
     return result
 
 async def command_list(request: Request):
