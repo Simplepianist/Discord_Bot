@@ -71,7 +71,8 @@ class Rob:
 
         await self.set_robbing_stop(auszeit, user.id)
 
-    async def rob_player(self, player: discord.Member, ctx: discord.Interaction | Context,
+    @staticmethod
+    async def rob_player(player: discord.Member, ctx: discord.Interaction | Context,
                      user, user_money):
         """
         Attempts to rob another player.
