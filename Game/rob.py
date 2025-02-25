@@ -1,3 +1,7 @@
+"""
+Dieses Modul enthält die Klasse `Rob`,
+die Funktionen zum Ausrauben von Spielern und Banken in einem Discord-Bot implementiert.
+"""
 import random
 import discord
 from discord.ext.commands import Context
@@ -6,6 +10,9 @@ from Util.util_commands import send_message, return_author, get_money_for_user, 
 
 
 class Rob:
+    """
+    Eine Klasse, die das Ausrauben von Spielern und Banken in einem Discord-Bot implementiert.
+    """
     def __init__(self):
         self.bank_caught = [
             "Dir ist deine Pistole aus der Hand gefallen als du sie zücken wolltest.\n"
@@ -43,86 +50,126 @@ class Rob:
         ]
 
     async def rob(self, player: discord.Member, ctx: discord.Interaction | Context):
+        """
+        Initiates a robbing action. If a player is specified, attempts to rob the player.
+        Otherwise, attempts to rob a bank.
+
+        Args:
+            player (discord.Member): The player to rob, if specified.
+            ctx (discord.Interaction | Context): The context of the command.
+        """
         # TODO UPDATE: implement Gun-Item from Shop
         user = return_author(ctx)
         user_money = await get_money_for_user(user)
-        auszeit = 0
-        worked = True
         currentlyGaming.append(str(user.id))
         if player is not None:
-            canrob = True
-            bot = False
-            if player.bot:
-                bot = True
-            if str(player.id) in currentlyGaming:
-                canrob = False
-            if canrob and not bot:
-                currentlyGaming.append(str(player.id))
-                robbing_money = await db.get_money_for_user(player.id)
-                if user_money < 250:
-                    await send_message(msg="Du hast nichtmal Geld für die Mindeststrafe. "
-                                           "Vergiss es lieber", ctx=ctx)
-                    return
-                if robbing_money < 500:
-                    await send_message(msg="Du willst jemanden mit 500 :coin: oder weniger "
-                                           "berauben.\nWas bist du für ein Monster", ctx=ctx)
-                else:
-                    if 250 > robbing_money * 0.05:
-                        worth = int(robbing_money * 0.05)
-                    else:
-                        worth = 250
-                    chance = random.randint(0,10)
-                    if chance < 3:
-                        await send_message(msg="Du hast " + player.mention + f" um {worth} :coin: "
-                                   "beraubt. \n\nDu beschließt für ein paar Tage niemanden mehr zu"
-                                   " berauben. Aber vielleicht ja in 2 Tagen wieder.", ctx=ctx)
-                        new_money = user_money + worth
-                        new_robbing_money = robbing_money - worth
-                        await db.set_money_for_user(player.id, new_robbing_money)
-                    else:
-                        await send_message(msg="Du wurdest erwischt und musst nun 250 :coin: als "
-                                               "Strafe zahlen. \n\nDu beschließt für ein paar Tage"
-                                               " niemanden mehr zu berauben. Aber vielleicht ja "
-                                               "in 2 Tagen wieder.", ctx=ctx)
-                        new_money = user_money - 250
-                    await db.set_money_for_user(user.id, new_money)
-                    auszeit = 2
-            else:
-                worked = False
-                if bot:
-                    await send_message(ctx, msg="Please stop pinging the Bots!!",
-                                       delete_after=10)
-                else:
-                    await send_message(ctx, "Der User ist beschäftigt, bitte warten.",
-                                       delete_after=10)
-            if worked:
-                currentlyGaming.remove(str(player.id))
-        elif player is None:
-            if user_money < 300:
-                await send_message(ctx, "Nopes. Du musst 300 :coin: oder mehr haben.",
-                                   delete_after=5)
-            else:
-                chance = random.randint(0,10)
-                if chance < 2:
-                    await send_message(ctx, "Du hast die Bank erfolgreich ausgeraubt. Die "
-                                            "hast 7000 :coin: erhalten. Musst aber für 5 Tage "
-                                            "untertauchen\n(Darfst niemanden ausrauben)")
-                    await db.set_money_for_user(user.id, user_money+7000)
-                else:
-                    if 300 < user_money * 0.075:
-                        pay = int(user_money * 0.075)
-                    else:
-                        pay = 300
-                    reason: str = random.choice(self.bank_caught)
-                    new_money=user_money - pay
-                    await db.set_money_for_user(user.id, new_money)
-                    await send_message(ctx, reason.replace("{money}", str(pay)) + ""
-                                           "\nDu musst für 5 Tage untertauchen "
-                                            "(Darfst niemanden ausrauben)")
-                auszeit = 5
+            auszeit = 2
+            await self.rob_player(player, ctx, user, user_money)
+        else:
+            auszeit = 5
+            await self.rob_bank(ctx, user, user_money)
+
         await self.set_robbing_stop(auszeit, user.id)
 
     @staticmethod
+    async def rob_player(player: discord.Member, ctx: discord.Interaction | Context,
+                     user, user_money):
+        """
+        Attempts to rob another player.
+
+        Args:
+            player (discord.Member): The player to rob.
+            ctx (discord.Interaction | Context): The context of the command.
+            user: The user initiating the robbing action.
+            user_money: The amount of money the user has.
+
+        Returns:
+            None
+        """
+        if player.bot:
+            await send_message(ctx, msg="Please stop pinging the Bots!!", delete_after=10)
+            return
+
+        if str(player.id) in currentlyGaming:
+            await send_message(ctx, "Der User ist beschäftigt, bitte warten.", delete_after=10)
+            return
+
+        currentlyGaming.append(str(player.id))
+        robbing_money = await db.get_money_for_user(player.id)
+
+        if user_money < 250:
+            await send_message(msg="Du hast nichtmal Geld für die Mindeststrafe. "
+                                   "Vergiss es lieber", ctx=ctx)
+            return
+
+        if robbing_money < 500:
+            await send_message(msg="Du willst jemanden mit 500 :coin: oder weniger berauben.\n"
+                                   "Was bist du für ein Monster", ctx=ctx)
+            return
+
+        worth = max(250, int(robbing_money * 0.05))
+        worth = min(worth, 2500)  # Upper limit
+
+        chance = random.randint(0, 10)
+        if chance < 3:
+            await send_message(msg="Du hast " + player.mention + f" um {worth} :coin: beraubt. \n"
+                                 f"\nDu beschließt für ein paar Tage niemanden mehr zu berauben. "
+                                 f"Aber vielleicht ja in 2 Tagen wieder.", ctx=ctx)
+            new_money = user_money + worth
+            new_robbing_money = robbing_money - worth
+            await db.set_money_for_user(player.id, new_robbing_money)
+        else:
+            penalty = int(user_money * 0.1)
+            penalty = min(penalty, 4000)
+            await send_message(msg="Du wurdest erwischt und musst nun " + str(penalty) + " :coin: "
+                                 "als Strafe zahlen. \n\nDu beschließt für ein paar Tage "
+                                 "niemanden mehr zu berauben. Aber vielleicht ja in 2 Tagen wieder."
+                               , ctx=ctx)
+            new_money = user_money - penalty
+
+        await db.set_money_for_user(user.id, new_money)
+        currentlyGaming.remove(str(player.id))
+
+    async def rob_bank(self, ctx: discord.Interaction | Context, user, user_money):
+        """
+        Attempts to rob a bank.
+
+        Args:
+            ctx (discord.Interaction | Context): The context of the command.
+            user: The user initiating the robbing action.
+            user_money: The amount of money the user has.
+
+        Returns:
+            None
+        """
+        if user_money < 300:
+            await send_message(ctx, "Nopes. Du musst 300 :coin: oder mehr haben.",
+                               delete_after=5)
+            return
+
+        chance = random.randint(0, 10)
+        if chance < 2:
+            await send_message(ctx, "Du hast die Bank erfolgreich ausgeraubt. "
+                                    "Die hast 7000 :coin: erhalten. Musst aber für 5 Tage "
+                                    "untertauchen\n(Darfst niemanden ausrauben)")
+            await db.set_money_for_user(user.id, user_money + 7000)
+        else:
+            penalty = max(300, int(user_money * 0.075))
+            penalty = min(penalty, 5000)
+            reason: str = random.choice(self.bank_caught)
+            new_money = user_money - penalty
+            await db.set_money_for_user(user.id, new_money)
+            await send_message(ctx, reason.replace("{money}", str(penalty)) +
+                               "\nDu musst für 5 Tage untertauchen (Darfst niemanden ausrauben)")
+
+    @staticmethod
     async def set_robbing_stop(auszeit: int, userid):
+        """
+        Removes the user from the currentlyGaming list and sets a robbing timeout.
+
+        Args:
+            auszeit (int): The timeout duration in days.
+            userid: The ID of the user.
+        """
         currentlyGaming.remove(str(userid))
         await db.set_robbing_timeout(userid, auszeit)
