@@ -59,17 +59,20 @@ class Rob:
             ctx (discord.Interaction | Context): The context of the command.
         """
         # TODO UPDATE: implement Gun-Item from Shop
-        user = return_author(ctx)
-        user_money = await get_money_for_user(user)
-        currentlyGaming.append(str(user.id))
+        author = return_author(ctx)
+        user_money = await get_money_for_user(author)
+        currentlyGaming.append(str(author.id))
         if player is not None:
             auszeit = 2
-            await self.rob_player(player, ctx, user, user_money)
+            await self.rob_player(player, ctx, author, user_money)
+
         else:
             auszeit = 5
-            await self.rob_bank(ctx, user, user_money)
+            await self.rob_bank(ctx, author, user_money)
 
-        await self.set_robbing_stop(auszeit, user.id)
+        currentlyGaming.remove(str(author.id))
+        currentlyGaming.remove(str(player.id))
+        await self.set_robbing_stop(auszeit, author.id)
 
     @staticmethod
     async def rob_player(player: discord.Member, ctx: discord.Interaction | Context,
@@ -128,7 +131,6 @@ class Rob:
             new_money = user_money - penalty
 
         await db.set_money_for_user(user.id, new_money)
-        currentlyGaming.remove(str(player.id))
 
     async def rob_bank(self, ctx: discord.Interaction | Context, user, user_money):
         """
@@ -164,12 +166,4 @@ class Rob:
 
     @staticmethod
     async def set_robbing_stop(auszeit: int, userid):
-        """
-        Removes the user from the currentlyGaming list and sets a robbing timeout.
-
-        Args:
-            auszeit (int): The timeout duration in days.
-            userid: The ID of the user.
-        """
-        currentlyGaming.remove(str(userid))
         await db.set_robbing_timeout(userid, auszeit)
