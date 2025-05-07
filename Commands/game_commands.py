@@ -107,6 +107,10 @@ async def send_command(ctx: Context | Interaction, member: Member, set_money=Non
                 await send_message(ctx,
                                    "Kein Spieler angegeben",
                                    ephemeral=True, delete_after=5)
+            elif str(member.id) in currentlyGaming:
+                await send_message(ctx,
+                                   "Dieser Spiel ist gerade beschäftigt",
+                                   ephemeral=True, delete_after=5)
             else:
                 money_user = await get_money_for_user(return_author(ctx))
                 money_other = await get_money_for_user(member)
