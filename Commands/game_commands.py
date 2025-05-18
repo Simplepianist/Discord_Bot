@@ -1,3 +1,18 @@
+"""
+This module contains various game commands for a Discord bot, including commands for
+robbery, displaying the scoreboard, daily rewards, sending money, checking money,
+and playing games like blackjack, roulette, and higher-lower.
+
+Commands:
+- rob_command: Handles the rob command.
+- scoreboard_command: Displays the scoreboard.
+- daily_command: Processes the daily command.
+- send_command: Processes the send command.
+- money_command: Shows the money of a user.
+- blackjack_command: Processes the blackjack command.
+- roulette_command: Processes the roulette command.
+- higher_lower_command: Processes the higher-lower command.
+"""
 import time
 from discord import Interaction, Member, Embed, Colour, ButtonStyle, ui
 from discord.ext.commands import Context
@@ -172,6 +187,7 @@ async def blackjack_command(ctx: Context | Interaction, bet: int):
             firstplayer = True
             has_interaction = True
             responded = False
+            response: Interaction | None = None
             bj = Blackjack(bet)
             bj.firstdraw()
             dealerpoints = get_first_card(bj.dealerdrawn)
@@ -197,15 +213,15 @@ async def blackjack_command(ctx: Context | Interaction, bet: int):
                         blackjack_msg = await send_message(ctx, embed=embed, view=blackjack_view)
                         firstplayer = not firstplayer
                     else:
-                        await response.response.edit_message(embed=embed, view=blackjack_view)
+                        if response:
+                            await response.response.edit_message(embed=embed, view=blackjack_view)
                     checkin = False
                     if bj.natural_player:
                         bj.stand("player")
                         has_interaction = False
                     else:
                         while not checkin:
-                            response: Interaction = await bot.wait_for('interaction',
-                                                                       check=lambda
+                            response = await bot.wait_for('interaction', check=lambda
                                   interaction: interaction.user == return_author(ctx))
                             if (
                                 ("component_type" in response.data

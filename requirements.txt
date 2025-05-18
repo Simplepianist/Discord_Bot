@@ -1,5 +1,8 @@
 discord.py==2.4.0
 aiomysql==0.2.0
 requests==2.32.3
+fastapi~=0.115.6
+uvicorn~=0.34.0
 urllib3==2.3.0
 six==1.17.0
+starlette~=0.41.3
