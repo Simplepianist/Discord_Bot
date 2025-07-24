@@ -1,14 +1,12 @@
 """
-Database access module using aiomysql for asynchronous MySQL operations.
+Database access module using asyncpg for asynchronous PostgreSQL operations.
 
 This module provides a DbController class to manage database connections and execute queries.
 """
 import os
 import datetime
 import logging
-import aiomysql
-
-
+import asyncpg
 
 class DbController:
     """
@@ -22,26 +20,24 @@ class DbController:
 
     async def init_pool(self):
         """
-        Initialize the connection pool using aiomysql
+        Initialize the connection pool using asyncpg
         with parameters from environment variables.
         """
-        self.pool = await aiomysql.create_pool(
+        self.pool = await asyncpg.create_pool(
             user=os.getenv('DB_USER'),
             password=os.getenv('DB_PASSWORD'),
             host=os.getenv('DB_HOST'),
-            port=3306,
-            db=os.getenv('DB_NAME'),
-            minsize=1,
-            maxsize=10,
-            autocommit=True
+            port=int(os.getenv('DB_PORT', 5432)),
+            database=os.getenv('DB_NAME'),
+            min_size=1,
+            max_size=10
         )
 
     async def close_pool(self):
         """
         Close the connection pool.
         """
-        self.pool.close()
-        await self.pool.wait_closed()
+        await self.pool.close()
 
     async def execute_query(self, query, params=None):
         """
@@ -51,9 +47,11 @@ class DbController:
         :param params: Optional parameters for the SQL query.
         :return: The result of the query.
         """
-        async with self.pool.acquire() as conn, conn.cursor() as cur:
-            await cur.execute(query, params)
-            result = await cur.fetchall()
+        async with self.pool.acquire() as conn:
+            if params:
+                result = await conn.fetch(query, *params)
+            else:
+                result = await conn.fetch(query)
             return result
 
     async def get_users_with_money(self):
@@ -62,7 +60,7 @@ class DbController:
 
         :return: The result of the query.
         """
-        query = "SELECT * FROM `money` ORDER BY money DESC"
+        query = 'SELECT * FROM money ORDER BY money DESC'
         return await self.execute_query(query)
 
     async def create_new_user(self, userid):
@@ -72,8 +70,8 @@ class DbController:
         :param userid: The ID of the user to create.
         :return: The result of the query.
         """
-        query = 'insert into users values (%s, "user")'
-        return await self.execute_query(query, (userid,))
+        query = 'INSERT INTO users VALUES ($1, $2)'
+        return await self.execute_query(query, (userid, "user"))
 
     async def get_money_for_user(self, userid):
         """
@@ -84,14 +82,14 @@ class DbController:
         :return: The amount of money the user has.
         """
         if await self.user_exists_in_table('money', userid):
-            query = "SELECT money FROM money WHERE identifier = %s"
+            query = "SELECT money FROM money WHERE identifier = $1"
             result = await self.execute_query(query, (userid,))
             if result:
-                return result[0][0]
+                return result[0]['money']
         else:
             if not await self.user_exists_in_table("users", userid):
                 await self.create_new_user(userid)
-            query = "INSERT INTO money (identifier, money) VALUES (%s, %s)"
+            query = "INSERT INTO money (identifier, money) VALUES ($1, $2)"
             await self.execute_query(query, (userid, 1000))
             return 1000
 
@@ -102,7 +100,7 @@ class DbController:
         :param userid: The ID of the user.
         :param money: The amount of money to set.
         """
-        query = "UPDATE money SET money = %s WHERE identifier = %s"
+        query = "UPDATE money SET money = $1 WHERE identifier = $2"
         await self.execute_query(query, (money, userid))
 
     async def get_daily(self, userid):
@@ -116,18 +114,18 @@ class DbController:
         if await self.user_exists_in_table('daily', userid):
             query = """
                 SELECT CASE WHEN EXISTS (
-                    SELECT * FROM daily
-                    WHERE identifier = %s
-                    AND last_daily < CURDATE()
+                    SELECT 1 FROM daily
+                    WHERE identifier = $1
+                    AND last_daily < CURRENT_DATE
                 )
-                THEN 1
-                ELSE 0 END;
+                THEN TRUE
+                ELSE FALSE END AS can_daily;
             """
             result = await self.execute_query(query, (userid,))
-            return bool(result[0][0]) if result else False
+            return bool(result[0]['can_daily']) if result else False
         if not await self.user_exists_in_table("users", userid):
             await self.create_new_user(userid)
-        query = "INSERT INTO daily (identifier, last_daily, streak) VALUES (%s, CURDATE(), 0)"
+        query = "INSERT INTO daily (identifier, last_daily, streak) VALUES ($1, CURRENT_DATE, 0)"
         await self.execute_query(query, (userid,))
         return True
 
@@ -141,21 +139,21 @@ class DbController:
         """
         query = """
             SELECT CASE WHEN EXISTS (
-                SELECT * FROM daily
-                WHERE identifier = %s
-                AND last_daily + INTERVAL 1 DAY = CURDATE()
+                SELECT 1 FROM daily
+                WHERE identifier = $1
+                AND last_daily + INTERVAL '1 day' = CURRENT_DATE
             )
-            THEN 1
-            ELSE 0 END;
+            THEN TRUE
+            ELSE FALSE END AS update_streak;
         """
         result = await self.execute_query(query, (userid,))
-        update = bool(result[0][0]) if result else False
+        update = bool(result[0]['update_streak']) if result else False
         if update:
             if streak <= 61:
-                query = "UPDATE daily SET streak = %s WHERE identifier = %s"
+                query = "UPDATE daily SET streak = $1 WHERE identifier = $2"
                 await self.execute_query(query, (streak, userid))
         else:
-            query = "UPDATE daily SET streak = 0 WHERE identifier = %s"
+            query = "UPDATE daily SET streak = 0 WHERE identifier = $1"
             await self.execute_query(query, (userid,))
 
     async def get_streak_bonus(self, userid: int):
@@ -167,15 +165,15 @@ class DbController:
         """
         query = """
             SELECT CASE WHEN EXISTS (
-                SELECT * FROM daily
-                WHERE identifier = %s
-                AND last_daily + INTERVAL 1 DAY = CURDATE()
+                SELECT 1 FROM daily
+                WHERE identifier = $1
+                AND last_daily + INTERVAL '1 day' = CURRENT_DATE
             )
-            THEN (SELECT streak + 1 FROM daily WHERE identifier = %s)
-            ELSE 0 END;
+            THEN (SELECT streak + 1 FROM daily WHERE identifier = $2)
+            ELSE 0 END AS streak_value;
         """
         result = await self.execute_query(query, (userid, userid))
-        streak = int(result[0][0]) if result else 0
+        streak = int(result[0]['streak_value']) if result else 0
         bonus = min(streak * 5, 300)
         await self.set_streak(userid, streak)
         return bonus
@@ -186,7 +184,7 @@ class DbController:
 
         :param userid: The ID of the user.
         """
-        query = "UPDATE daily SET last_daily = CURDATE() WHERE identifier = %s"
+        query = "UPDATE daily SET last_daily = CURRENT_DATE WHERE identifier = $1"
         await self.execute_query(query, (userid,))
 
     async def user_exists_in_table(self, table, userid):
@@ -198,15 +196,13 @@ class DbController:
         :return: True if the user exists, False otherwise.
         """
         query = f"""
-            SELECT CASE WHEN EXISTS (
-                SELECT * FROM {table}
-                WHERE identifier = %s
-            )
-            THEN 1
-            ELSE 0 END;
+            SELECT EXISTS (
+                SELECT 1 FROM {table}
+                WHERE identifier = $1
+            ) AS exists_user;
         """
         result = await self.execute_query(query, (userid,))
-        return bool(result[0][0]) if result else False
+        return bool(result[0]['exists_user']) if result else False
 
     async def set_robbing_timeout(self, userid, auszeit):
         """
@@ -225,8 +221,8 @@ class DbController:
 
         :param userid: The ID of the user.
         """
-        query = "INSERT INTO robbing (identifier, next_robbing) VALUES (%s, CURDATE())"
-        await self.execute_query(query, userid)
+        query = "INSERT INTO robbing (identifier, next_robbing) VALUES ($1, CURRENT_DATE)"
+        await self.execute_query(query, (userid,))
 
     async def update_robbing(self, userid, next_robbing):
         """
@@ -235,8 +231,8 @@ class DbController:
         :param userid: The ID of the user.
         :param next_robbing: The next robbing date.
         """
-        formatted_date = next_robbing.strftime('%Y-%m-%d') if next_robbing else 'CURDATE()'
-        query = "UPDATE robbing SET next_robbing = %s WHERE identifier = %s"
+        formatted_date = next_robbing.strftime('%Y-%m-%d') if next_robbing else None
+        query = "UPDATE robbing SET next_robbing = $1 WHERE identifier = $2"
         await self.execute_query(query, (formatted_date, userid))
 
     async def can_rob(self, userid):
@@ -248,11 +244,12 @@ class DbController:
         :return: A tuple (can_rob, next_robbing_date).
         """
         if await self.user_exists_in_table('robbing', userid):
-            query = "SELECT next_robbing FROM robbing WHERE identifier = %s"
+            query = "SELECT next_robbing FROM robbing WHERE identifier = $1"
             result = await self.execute_query(query, (userid,))
             if result:
-                next_robbing_date = result[0][0]
-                return not (datetime.date.today() < next_robbing_date), next_robbing_date
+                next_robbing_date = result[0]['next_robbing']
+                can_rob = not (datetime.date.today() < next_robbing_date)
+                return can_rob, next_robbing_date
             logging.error("The Check Rob made an Error")
             return False, None
         await self.insert_robbing(userid)

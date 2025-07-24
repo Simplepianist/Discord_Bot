@@ -7,7 +7,6 @@ import asyncio
 import random
 from discord import Interaction
 from discord.ext.commands import Context
-from Util.util_commands import send_message
 
 # Liste der Roulette-Zahlen und ihrer Farben
 ROULETTE_NUMBERS = [
@@ -78,13 +77,13 @@ async def spinning(ctx: Context | Interaction):
         spin_number, spin_color = random.choice(ROULETTE_NUMBERS)
         if msg is None:
             if spin_color == "green":
-                msg = await send_message(ctx, f"Spinning... "
+                msg = await ctx.send(f"Spinning... "
                                               f"**{spin_number}**  :green_square:")
             elif spin_color == "red":
-                msg = await send_message(ctx, f"Spinning... "
+                msg = await ctx.send(f"Spinning... "
                                               f"**{spin_number}**  :red_square:")
             elif spin_color == "black":
-                msg = await send_message(ctx, f"Spinning... "
+                msg = await ctx.send(f"Spinning... "
                                               f"**{spin_number}**  :black_large_square:")
         else:
             await msg.edit(content=f"Spinning... **{spin_number}** "

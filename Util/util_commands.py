@@ -37,33 +37,6 @@ def create_select_embed(user):
                      icon_url=user.avatar)
     return embed
 
-async def send_message(ctx: Context | Interaction, msg: str = None, view: ui.View = None,
-                       embed: Embed = None,
-                       ephemeral: bool = False, delete_after: int = None):
-    if isinstance(ctx, Context):
-        if ephemeral:
-            return await ctx.channel.send(content=msg, embed=embed, view=view,
-                                          delete_after=delete_after)
-        if delete_after:
-            return await ctx.channel.send(content=msg, embed=embed,
-                                          view=view, delete_after=delete_after)
-        return await ctx.channel.send(content=msg, embed=embed,
-                                      view=view)
-    if isinstance(ctx, Interaction):
-        try:
-            await ctx.response.defer()
-        except HTTPException:
-            pass
-        if view is not None:
-            if ephemeral:
-                return await ctx.followup.send(content=msg, embed=embed,
-                                               view=view, ephemeral=ephemeral)
-            return await ctx.followup.send(content=msg, embed=embed, view=view)
-        if ephemeral:
-            return await ctx.followup.send(content=msg, embed=embed, ephemeral=ephemeral)
-        return await ctx.followup.send(content=msg, embed=embed)
-
-
 def return_author(ctx: Context | Interaction):
     if isinstance(ctx, Interaction):
         return ctx.user
@@ -86,7 +59,7 @@ async def execute_gaming_with_timeout(ctx: Context | Interaction, befehl,
             await asyncio.wait_for(befehl(ctx, param_one, param_two), timeout=300)
     except asyncio.TimeoutError:
         currentlyGaming.remove(str(return_author(ctx).id))
-        await send_message(ctx, "Du hast zu lange gebraucht. Deine Runde endet.")
+        await ctx.send("Du hast zu lange gebraucht. Deine Runde endet.")
 
 async def get_money_for_user(user: Member):
     money_user = await db.get_money_for_user(user.id)
