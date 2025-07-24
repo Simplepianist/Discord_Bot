@@ -1,6 +1,6 @@
 discord.py==2.4.0
 aiomysql==0.2.0
 requests==2.32.4
-urllib3==2.3.0
+urllib3==2.5.0
 six==1.17.0
 cryptography==45.0.2
