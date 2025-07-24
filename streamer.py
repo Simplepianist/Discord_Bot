@@ -62,15 +62,15 @@ import os
 import json
 import logging
 import discord
+from alembic.config import Config
+from alembic import command
 from discord import Streaming
 from discord.ext.commands import Bot
-import alembic.config
 from Database.db_access import DbController
 from cogs.CogSelector import CogSelector
 from discord.app_commands import CommandInvokeError, CommandOnCooldown
 from discord.ext.commands import Context, BadArgument, MissingRequiredArgument, \
     CheckFailure, NotOwner
-
 
 def load_config():
     """
@@ -86,21 +86,21 @@ def load_config():
     with open("jsons/config.json") as f:
         json_file = json.load(f)
     try:
-        json_file["embed"]["embeds_footerpic"] = OWNER.avatar
+        json_file["embed"]["embeds_footerpic"] = discord.Member
     except:
         pass
     return json_file
 
 def run_migrations():
-    alembicArgs = ["upgrade", "head"]
-    alembic.config.main(argv=alembicArgs)
-
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
 class SimpleBot(Bot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.owner: discord.User = self.get_user(self.owner_id)
+        self.shutdown_initiated = False
         self.logging = logging
-        logging.basicConfig(level=logging.INFO)
         self.db = DbController()
         self.config = load_config()
 
@@ -117,14 +117,14 @@ class SimpleBot(Bot):
         - Setzt den Besitzer des Bots.
         - Ändert die Präsenz des Bots zu einem Streaming-Status mit einem bestimmten Namen und URL.
         """
-        run_migrations()
-        await self.db.init_pool()
-        logging.basicConfig(level=logging.INFO,
-                            format='%(asctime)s:%(levelname)s:%(message)s')
-        await self.tree.sync()
-        logging.info("Sync gestartet (1h)")
-        await self.change_presence(activity=Streaming(name=".help", url=self.config["streamURL"]))
+        self.logging.basicConfig(level=logging.INFO,
+                                 format='%(asctime)s:%(levelname)s:%(message)s')
         await self.add_cog(CogSelector(self))
+        await self.change_presence(activity=Streaming(name=".help", url=self.config["streamURL"]))
+        await self.db.init_pool()
+        await self.tree.sync()
+        self.logging.info("Sync gestartet (1h)")
+
 
     async def on_command_error(self, ctx: Context, error):
         if isinstance(error, BadArgument):
@@ -142,32 +142,16 @@ class SimpleBot(Bot):
                            f"Versuche es in {error.retry_after:.2f} Sekunden erneut.",
                            delete_after=5)
         else:
-            raise logging.error("Error: %s (caused by %s)", error, ctx.author.global_name)
+            self.logging.error("Error: %s (caused by %s)", error, ctx.author.global_name)
 
-    def setup_logging(self):
-        """
-        Konfiguriert das Logging für den Bot.
-        """
-        self.logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s:%(levelname)s:%(message)s',
-            handlers=[
-                logging.FileHandler("bot.log"),
-                logging.StreamHandler()
-            ]
-        )
+intents = discord.Intents.default()
+intents.all()
+intents.members = True
+intents.message_content = True
+simpleBot = SimpleBot(command_prefix=".", help_command=None, intents=intents, case_insensitive=True)
 
-
-if __name__ == "__main__":
-    intents = discord.Intents.default()
-    intents.all()
-    intents.members = True
-    intents.message_content = True
-    SHUTDOWN_INITIATED = False
-    simpleBot = SimpleBot(command_prefix=".", help_command=None, intents=intents, case_insensitive=True)
-    OWNER = discord.Member
-
-    try:
-        simpleBot.run(os.environ["token"])
-    finally:
-        logging.shutdown()
+try:
+    run_migrations()
+    simpleBot.run(os.environ["token"])
+finally:
+    logging.shutdown()

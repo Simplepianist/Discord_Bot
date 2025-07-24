@@ -4,9 +4,7 @@ die eine benutzerdefinierte Auswahlkomponente für Discord-Bots darstellt.
 """
 from discord import Interaction, SelectOption, Member
 from discord.ui import Select
-from Util.variables import OWNER
-from Util.util_commands import create_select_embed
-from config_loader import Loader
+from Util.util_commands import Utility
 
 class UniversalSelect(Select):
     """
@@ -28,7 +26,7 @@ class UniversalSelect(Select):
         """
         self._view = value
 
-    def __init__(self, user: Member, options: list[SelectOption], response: dict, view):
+    def __init__(self, user: Member, options: list[SelectOption], response: dict, view, bot):
         """
         Initialisiert eine neue Instanz der UniversalSelect-Klasse.
 
@@ -37,11 +35,12 @@ class UniversalSelect(Select):
         :param response: Ein Wörterbuch mit den Antworten für jede Auswahloption.
         :param view: Die Ansicht, die aktualisiert werden soll.
         """
+        self.utils = Utility(bot)
         self.user = user
         self.response = response
-        self.embed = create_select_embed(user)
+        self.embed = self.utils.create_select_embed(user)
         self.view = view
-        self.loaded_config = Loader(OWNER).load_config("embed")
+        self.loaded_config = self.utils.load_config("embed")
         self.embed.set_thumbnail(url=self.loaded_config["embeds_thumbnail"])
         super().__init__(placeholder="Wähle eine Category",
                          max_values=1,

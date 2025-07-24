@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from Database.db_tables import Base
@@ -7,9 +8,21 @@ from sqlalchemy import pool
 
 from alembic import context
 
+import urllib.parse
+
+def make_postgres_conn_string():
+    user_enc = urllib.parse.quote_plus(os.getenv('DB_USER'))
+    password_enc = urllib.parse.quote_plus(os.getenv('DB_PASSWORD'))
+    host_enc = urllib.parse.quote_plus(os.getenv('DB_HOST'))
+    dbname_enc = urllib.parse.quote_plus(os.getenv('DB_NAME'))
+    conn_str = f"postgresql+psycopg2://{user_enc}:{password_enc}@{host_enc}/{dbname_enc}"
+    return conn_str.replace('%', '%%')
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+config._interpolation = None
+config.set_main_option("sqlalchemy.url", make_postgres_conn_string())
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

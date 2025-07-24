@@ -1,113 +1,108 @@
-import asyncio
 import json
-from http.client import HTTPException
-from discord import Interaction, Member, Embed, Colour, ui
+
+import discord.ext.commands
+from discord import Interaction, Member, Embed, Colour
 from discord.ext.commands import Context
-from Database.db_access import DbController
-from Util.variables import botRole, currentlyGaming, OWNER
-from config_loader import Loader
-
-db = DbController()
-
-#region Utility
-def load_config(name):
-    with open("jsons/config.json") as f:
-        json_file = json.load(f)
-    try:
-        json_file["embed"]["embeds_footerpic"] = OWNER.avatar
-    except KeyError:
-        pass
-    return json_file[name]
 
 
-def check_admin(ctx: Context | Interaction):
-    if botRole in [y.name.lower() for y in return_author(ctx).roles]:
-        return True
-    return False
+class Utility:
+    """
+    A class to handle utility functions for the Discord bot.
+    """
+
+    def __init__(self, bot):
+        self.bot: discord.ext.commands.Bot = bot
+
+    #region Utility
+    async def load_config(self, name):
+        with open("jsons/config.json") as f:
+            json_file = json.load(f)
+        try:
+            json_file["embed"]["embeds_footerpic"] = None
+        except KeyError:
+            pass
+        return json_file[name]
 
 
-def create_select_embed(user):
-    embed = Embed(title="Eine kleine Hilfe zu den alias Commands",
-                          colour=Colour(0x0446b0),
-                          description="hier erfährst du mehr zu "
-                                      "den einzelnen alias Commands")
-    loaded_config = Loader(user).load_config("embed")
-    embed.set_thumbnail(url=loaded_config["embeds_thumbnail"])
-    embed.set_footer(text="Asked by " + user.name,
-                     icon_url=user.avatar)
-    return embed
-
-def return_author(ctx: Context | Interaction):
-    if isinstance(ctx, Interaction):
-        return ctx.user
-    return ctx.author
-#endregion
-
-#region DB
-async def get_daily(user):
-    can_daily = await db.get_daily(user.id)
-    return can_daily
-#endregion
-
-#region Gaming
-async def execute_gaming_with_timeout(ctx: Context | Interaction, befehl,
-                                      param_one, param_two=None):
-    try:
-        if param_two is None:
-            await asyncio.wait_for(befehl(ctx, param_one), timeout=300)
-        else:
-            await asyncio.wait_for(befehl(ctx, param_one, param_two), timeout=300)
-    except asyncio.TimeoutError:
-        currentlyGaming.remove(str(return_author(ctx).id))
-        await ctx.send("Du hast zu lange gebraucht. Deine Runde endet.")
-
-async def get_money_for_user(user: Member):
-    money_user = await db.get_money_for_user(user.id)
-    return money_user
-
-def create_embed(ctx: Context | Interaction, colorcode, kind) -> Embed:
-    return basic_embed_element(ctx, colorcode, kind, " is playing")
+    def check_admin(self, ctx: Context | Interaction):
+        if self.bot.config["botRole"] in [y.name.lower() for y in self.return_author(ctx).roles]:
+            return True
+        return False
 
 
-def create_social_embed(ctx: Context | Interaction, colorcode, kind) -> Embed:
-    return basic_embed_element(ctx, colorcode, kind, " has asked")
+    def create_select_embed(self, user):
+        embed = Embed(title="Eine kleine Hilfe zu den alias Commands",
+                              colour=Colour(0x0446b0),
+                              description="hier erfährst du mehr zu "
+                                          "den einzelnen alias Commands")
+        loaded_config = self.bot.config["embed"]
+        embed.set_thumbnail(url=loaded_config["embeds_thumbnail"])
+        embed.set_footer(text="Asked by " + user.name,
+                         icon_url=user.avatar)
+        return embed
+
+    def return_author(self, ctx: Context | Interaction):
+        if isinstance(ctx, Interaction):
+            return ctx.user
+        return ctx.author
+    #endregion
+
+    #region DB
+    async def get_daily(self, user):
+        can_daily = await self.bot.db.get_daily(user.id)
+        return can_daily
+    #endregion
+
+    #region Gaming
 
 
-def basic_embed_element(ctx: Context | Interaction, colorcode, kind, text) -> Embed:
-    embed = Embed(title=kind, colour=Colour(colorcode))
-    embed.set_footer(text=return_author(ctx).name + text,
-                     icon_url=return_author(ctx).avatar)
-    return embed
+    async def get_money_for_user(self,user: Member):
+        money_user = await self.bot.db.get_money_for_user(user.id)
+        return money_user
+
+    def create_embed(self, ctx: Context | Interaction, colorcode, kind) -> Embed:
+        return self.basic_embed_element(ctx, colorcode, kind, " is playing")
 
 
-async def can_play(ctx: Context | Interaction, bet):
-    playable = True
-    has_enough = True
-    is_int = True
-    user_money = await get_money_for_user(return_author(ctx))
-    try:
-        bet = int(bet)
-    except ValueError:
-        playable = False
-        is_int = False
-    if is_int:
-        if bet < 1:
+    def create_social_embed(self, ctx: Context | Interaction, colorcode, kind) -> Embed:
+        return self.basic_embed_element(ctx, colorcode, kind, " has asked")
+
+
+    def basic_embed_element(self, ctx: Context | Interaction, colorcode, kind, text) -> Embed:
+        embed = Embed(title=kind, colour=Colour(colorcode))
+        embed.set_footer(text=self.return_author(ctx).name + text,
+                         icon_url=self.return_author(ctx).avatar)
+        return embed
+
+
+    async def can_play(self, ctx: Context | Interaction, bet):
+        playable = True
+        has_enough = True
+        is_int = True
+        user_money = await self.bot.db.get_money_for_user(self.return_author(ctx))
+        try:
+            bet = int(bet)
+        except ValueError:
             playable = False
-        if bet > user_money:
-            has_enough = False
-    return [playable, has_enough]
+            is_int = False
+        if is_int:
+            if bet < 1:
+                playable = False
+            if bet > user_money:
+                has_enough = False
+        return [playable, has_enough]
 
 
-def get_first_card(cards) -> int:
-    firstworth = 0
-    card = cards[0]
-    kind = card[0]
-    if kind in ["Bube", "Dame", "König"]:
-        firstworth += 10
-    elif kind == "Ass":
-        firstworth += 11
-    else:
-        firstworth += int(kind)
+    def get_first_card(self, cards) -> int:
+        firstworth = 0
+        card = cards[0]
+        kind = card[0]
+        if kind in ["Bube", "Dame", "König"]:
+            firstworth += 10
+        elif kind == "Ass":
+            firstworth += 11
+        else:
+            firstworth += int(kind)
 
-    return firstworth
-#endregion
+        return firstworth
+    #endregion

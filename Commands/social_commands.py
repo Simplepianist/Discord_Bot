@@ -12,7 +12,7 @@ from discord import Interaction
 from discord.ext.commands import Context
 from API.quote import animequote, qotd
 from API.anime import get_anime_character_image
-from Util.util_commands import create_social_embed
+from Util.util_commands import Utility
 
 class SocialCommands:
     """
@@ -21,6 +21,7 @@ class SocialCommands:
 
     def __init__(self, bot):
         self.bot = bot
+        self.utils = Utility(bot)
 
     async def anime_quote(self, ctx: Context | Interaction):
         """
@@ -33,7 +34,7 @@ class SocialCommands:
         character = data["author"]
         anime = data["anime"]
         quote = data["quote"]
-        embed = create_social_embed(ctx, 0x6a329f, "Anime Quote")
+        embed = self.utils.create_social_embed(ctx, 0x6a329f, "Anime Quote")
         embed.add_field(name=f"*{character}* ({anime})", value=quote)
         url = get_anime_character_image(character)
         if url:
@@ -51,6 +52,6 @@ class SocialCommands:
         if not data:
             await ctx.send("Error fetching quote of the day")
             return
-        embed = create_social_embed(ctx, 0x6a329f, "Quote of the Day")
+        embed = self.utils.create_social_embed(ctx, 0x6a329f, "Quote of the Day")
         embed.add_field(name = f"*{data['a']}*", value=data["q"])
         await ctx.send(embed=embed)

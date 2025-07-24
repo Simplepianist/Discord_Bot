@@ -1,5 +1,4 @@
 discord.py==2.5.2
-aiomysql==0.2.0
 requests==2.32.3
 urllib3==2.5.0
 six==1.17.0

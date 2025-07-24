@@ -1,3 +1,4 @@
+import asyncio
 import time
 from discord import Interaction, Member, Embed, Colour, ButtonStyle, ui
 from discord.ext.commands import Context
@@ -7,20 +8,9 @@ from Game.higher_lower import HigherLower
 from Game.rob import Rob
 
 from Game.roulette import validate_entry, spinning, play_roulette
-from Util.util_commands import return_author, \
-    get_daily, get_money_for_user, can_play, create_embed, get_first_card, load_config
+from Util.util_commands import Utility
 
 embed_view, message = None, None
-
-
-async def handle_invalid_bet(ctx, playable):
-    """Handles invalid bet scenarios."""
-    if not playable[0]:
-        await ctx.send("Wetteinsatz ungültig",
-                           ephemeral=True, delete_after=5)
-    if not playable[1]:
-        await ctx.send(
-                        f"Du hast nur {await get_money_for_user(return_author(ctx))} :coin:")
 
 
 def create_blackjack_view(draw_button, hold_button):
@@ -40,19 +30,38 @@ def get_card_icon(card):
 class GamingCommands:
     """Class containing gaming commands."""
 
-    def __init__(self, db_controller, bot):
+    def __init__(self, bot):
         self.currentlyGaming = []
-        self.db = db_controller
         self.bot = bot
+        self.utils = Utility(bot)
 
+    async def handle_invalid_bet(self, ctx, playable):
+        """Handles invalid bet scenarios."""
+        if not playable[0]:
+            await ctx.send("Wetteinsatz ungültig",
+                           ephemeral=True, delete_after=5)
+        if not playable[1]:
+            await ctx.send(
+                f"Du hast nur {await self.utils.get_money_for_user(self.utils.return_author(ctx))} :coin:")
+
+    async def execute_gaming_with_timeout(self, ctx: Context | Interaction, befehl,
+                                          param_one, param_two=None):
+        try:
+            if param_two is None:
+                await asyncio.wait_for(befehl(ctx, param_one), timeout=300)
+            else:
+                await asyncio.wait_for(befehl(ctx, param_one, param_two), timeout=300)
+        except asyncio.TimeoutError:
+            self.currentlyGaming.remove(str(self.utils.return_author(ctx).id))
+            await ctx.send("Du hast zu lange gebraucht. Deine Runde endet.")
 
     async def rob_command(self, ctx: Context | Interaction, player: Member):
         """Handles the rob command."""
-        author = return_author(ctx)
-        can_rob, next_robbing = await self.db.can_rob(author.id)
+        author = self.utils.return_author(ctx)
+        can_rob, next_robbing = await self.bot.db.can_rob(author.id)
         if can_rob:
             if str(author.id) not in self.currentlyGaming:
-                robbing = Rob()
+                robbing = Rob(self.bot)
                 await robbing.rob(player, ctx)
             else:
                 await ctx.send(f"{author.mention}. Du bist beschäftigt mit etwas anderem!!!",
@@ -70,14 +79,14 @@ class GamingCommands:
 
     async def scoreboard_command(self, ctx: Context | Interaction):
         """Displays the scoreboard."""
-        scorelist = await self.db.get_users_with_money()
-        loaded_config = load_config("embed")
+        scorelist = await self.bot.db.get_users_with_money()
+        loaded_config = self.bot.config["embed"]
         embed = Embed(title="Scoreboard",
                               colour=Colour(0x6b0b04),
                               description="Hier ist das Scoreboard für die Games")
         embed.set_thumbnail(url=loaded_config["embeds_thumbnail"])
-        embed.set_footer(text="Asked by " + return_author(ctx).name,
-                         icon_url=return_author(ctx).avatar)
+        embed.set_footer(text="Asked by " + self.utils.return_author(ctx).name,
+                         icon_url=self.utils.return_author(ctx).avatar)
 
         for i, score in enumerate(scorelist):
             user = (self.bot.get_user(int(score[0]))
@@ -97,16 +106,16 @@ class GamingCommands:
 
     async def daily_command(self, ctx: Context | Interaction):
         """Verarbeitet den täglichen Befehl."""
-        author = return_author(ctx)
-        if await get_daily(author):
-            money_user = int(await get_money_for_user(author)) + 300
-            bonus = await self.db.get_streak_bonus(author.id)
+        author = self.utils.return_author(ctx)
+        if await self.utils.get_daily(author):
+            money_user = int(await self.utils.get_money_for_user(author)) + 300
+            bonus = await self.bot.db.get_streak_bonus(author.id)
             money_user += bonus
-            await self.db.set_money_for_user(author.id, money_user)
+            await self.bot.db.set_money_for_user(author.id, money_user)
             await ctx.send(
                                f"Du hast {300 + bonus} Coins erhalten.\n" +
                                f"**Total: {money_user} Coins**")
-            await self.db.set_daily(author.id)
+            await self.bot.db.set_daily(author.id)
         else:
             await ctx.send(
                                "**Du hast dein Daily heute schon geclaimed**")
@@ -114,7 +123,7 @@ class GamingCommands:
     async def send_command(self, ctx: Context | Interaction, member: Member, set_money=None):
         """Verarbeitet den Sende-Befehl."""
         if not member.bot:
-            author = str(return_author(ctx))
+            author = str(self.utils.return_author(ctx))
             user = str(member)
             try:
                 set_money = int(set_money)
@@ -139,15 +148,15 @@ class GamingCommands:
                                        "Dieser Spiel ist gerade beschäftigt",
                                        ephemeral=True, delete_after=5)
                 else:
-                    money_user = await get_money_for_user(return_author(ctx))
-                    money_other = await get_money_for_user(member)
+                    money_user = await self.utils.get_money_for_user(self.utils.return_author(ctx))
+                    money_other = await self.utils.get_money_for_user(member)
                     if set_money > money_user:
                         await ctx.send("Nicht genügend :coin: zum senden")
                     else:
                         money_user -= set_money
                         money_other += set_money
-                        await self.db.set_money_for_user(return_author(ctx).id, money_user)
-                        await self.db.set_money_for_user(member.id, money_other)
+                        await self.bot.db.set_money_for_user(self.utils.return_author(ctx).id, money_user)
+                        await self.bot.db.set_money_for_user(member.id, money_other)
                         embed = Embed(title="Bank", colour=Colour(0xc6c910))
                         embed.add_field(name=author,
                                         value=f"Money: {money_user} :coin:",
@@ -168,21 +177,21 @@ class GamingCommands:
         """Zeigt das Geld eines Benutzers an."""
         if may_member is not None:
             if not may_member.bot:
-                user_money = await get_money_for_user(may_member)
+                user_money = await self.utils.get_money_for_user(may_member)
                 await ctx.send(f"{may_member.name} hat aktuell {user_money} :coin:")
             else:
                 await ctx.send("Bitte nicht die Bots pingen", delete_after=20)
         else:
-            user_money = await get_money_for_user(return_author(ctx))
+            user_money = await self.utils.get_money_for_user(self.utils.return_author(ctx))
             await ctx.send(f"Du hast aktuell {user_money} :coin:")
 
     async def blackjack_command(self, ctx: Context | Interaction, bet: int):
         """Verarbeitet den Blackjack-Befehl."""
-        playable = await can_play(ctx, bet)
+        playable = await self.utils.can_play(ctx, bet)
         if playable[0] and playable[1]:
-            user = str(return_author(ctx).id)
+            user = str(self.utils.return_author(ctx).id)
             if user not in self.currentlyGaming:
-                money_user = await get_money_for_user(return_author(ctx))
+                money_user = await self.utils.get_money_for_user(self.utils.return_author(ctx))
                 self.currentlyGaming.append(user)
                 draw_id = "draw_" + user
                 hold_id = "hold_" + user
@@ -192,13 +201,13 @@ class GamingCommands:
                 hold_button = Button(label="Stand",
                                      style=ButtonStyle.red,
                                      custom_id=hold_id)
-                embed = create_embed(ctx, 0xb59809, "Blackjack")
+                embed = self.utils.create_embed(ctx, 0xb59809, "Blackjack")
                 firstplayer = True
                 has_interaction = True
                 responded = False
                 bj = Blackjack(bet)
                 bj.firstdraw()
-                dealerpoints = get_first_card(bj.dealerdrawn)
+                dealerpoints = self.utils.get_first_card(bj.dealerdrawn)
                 dealershown = ""
                 playerausgabe = ""
                 while not bj.is_over():
@@ -210,10 +219,10 @@ class GamingCommands:
                             dealercard = bj.dealerdrawn[0]
                             dealershown = get_card_icon(dealercard[0])
                         else:
-                            embed = create_embed(ctx, 0xb59809, "Blackjack")
+                            embed = self.utils.create_embed(ctx, 0xb59809, "Blackjack")
                         cardshow = [get_card_icon(card[0]) for card in bj.playerdrawn]
                         playerausgabe = ", ".join(cardshow)
-                        embed.add_field(name=str(return_author(ctx).name) + f" | ```{bj.player}```",
+                        embed.add_field(name=str(self.utils.return_author(ctx).name) + f" | ```{bj.player}```",
                                         value=f"{playerausgabe}", inline=True)
                         embed.add_field(name="Dealer" + f" | ```{dealerpoints}```",
                                         value=f"{dealershown}", inline=True)
@@ -230,7 +239,7 @@ class GamingCommands:
                             while not checkin:
                                 response: Interaction = await self.bot.wait_for('interaction',
                                                                            check=lambda
-                                      interaction: interaction.user == return_author(ctx))
+                                      interaction: interaction.user == self.utils.return_author(ctx))
                                 if (
                                     ("component_type" in response.data
                                     and "custom_id" in response.data)
@@ -249,10 +258,10 @@ class GamingCommands:
                     else:
                         blackjack_view.clear_items()
                         if not bj.is_overbought("player"):
-                            embed = create_embed(ctx, 0xb59809, "Blackjack")
+                            embed = self.utils.create_embed(ctx, 0xb59809, "Blackjack")
                             cardshow = [get_card_icon(card[0]) for card in bj.dealerdrawn]
                             dealerausgabe = ", ".join(cardshow)
-                            embed.add_field(name=str(return_author(ctx).name) +
+                            embed.add_field(name=str(self.utils.return_author(ctx).name) +
                                                  f" | ```{bj.player}```",
                                             value=f"{playerausgabe}", inline=True)
                             embed.add_field(name="Dealer" + f" | ```{bj.dealer}```",
@@ -275,21 +284,21 @@ class GamingCommands:
                 await self.finalize_blackjack(ctx, bj, bet, money_user, user, blackjack_msg, embed)
             else:
                 await ctx.send(
-                                    f"{return_author(ctx).mention}. Du spielst schon!!!",
+                                    f"{self.utils.return_author(ctx).mention}. Du spielst schon!!!",
                                    ephemeral=True,
                                    delete_after=5)
         else:
-            await handle_invalid_bet(ctx, playable)
+            await self.handle_invalid_bet(ctx, playable)
 
     async def roulette_command(self, ctx: Context | Interaction, bet: int, entry: str):
         """Verarbeitet den Roulette-Befehl."""
-        playable = await can_play(ctx, bet)
-        user = str(return_author(ctx).id)
+        playable = await self.utils.can_play(ctx, bet)
+        user = str(self.utils.return_author(ctx).id)
         if playable[0] and playable[1]:
             if user not in self.currentlyGaming:
                 validator = validate_entry(entry)
                 if validator[0]:
-                    money_user = await get_money_for_user(return_author(ctx))
+                    money_user = await self.utils.get_money_for_user(self.utils.return_author(ctx))
                     self.currentlyGaming.append(user)
                     roulette_message = await spinning(ctx)
                     if isinstance(validator[1], int):
@@ -303,36 +312,36 @@ class GamingCommands:
                         result = await play_roulette(entry, "color", roulette_message)
                     if result:
                         money_user += int(bet * multiplication)
-                        await self.db.set_money_for_user(return_author(ctx).id, money_user)
+                        await self.bot.db.set_money_for_user(self.utils.return_author(ctx).id, money_user)
                         await ctx.send(
                                            f"Du hast {str(int(bet * multiplication))} "
                                            f":coin: gewonnen.\n"
                                            f"Aktueller Kontostand: {money_user} :coin:")
                     else:
                         money_user -= bet
-                        await self.db.set_money_for_user(return_author(ctx).id, money_user)
+                        await self.bot.db.set_money_for_user(self.utils.return_author(ctx).id, money_user)
                         await ctx.send(
                                            f"Du hast {str(bet)} :coin: verloren.\n"
                                             f"Aktueller Kontostand: {money_user} :coin:")
-                    self.currentlyGaming.remove(str(return_author(ctx).id))
+                    self.currentlyGaming.remove(str(self.utils.return_author(ctx).id))
                 else:
                     await ctx.send(
                                        "Eingabe ungülltig. Gültig: 0-36, red, black, green",
                                        ephemeral=True, delete_after=5)
             else:
                 await ctx.send(
-                                   f"{return_author(ctx).mention}. Du spielst schon!!!",
+                                   f"{self.utils.return_author(ctx).mention}. Du spielst schon!!!",
                                    ephemeral=True, delete_after=5)
         else:
-            await handle_invalid_bet(ctx, playable)
+            await self.handle_invalid_bet(ctx, playable)
 
     async def higher_lower_command(self, ctx: Context | Interaction, bet: int):
         """Verarbeitet den Higher-Lower-Befehl."""
-        playable = await can_play(ctx, bet)
-        money_user = await get_money_for_user(return_author(ctx))
+        playable = await self.utils.can_play(ctx, bet)
+        money_user = await self.utils.get_money_for_user(self.utils.return_author(ctx))
         if playable[0] and playable[1]:
-            if str(return_author(ctx).id) not in self.currentlyGaming:
-                self.currentlyGaming.append(str(return_author(ctx).id))
+            if str(self.utils.return_author(ctx).id) not in self.currentlyGaming:
+                self.currentlyGaming.append(str(self.utils.return_author(ctx).id))
                 higher_button = Button(label="Higher",
                                        style=ButtonStyle.green,
                                        custom_id="higher")
@@ -343,14 +352,14 @@ class GamingCommands:
                 higher_lower_view.add_item(higher_button)
                 higher_lower_view.add_item(lower_button)
                 game = HigherLower(bet)
-                embed = create_embed(ctx, 0xb59809, "Higher Lower")
+                embed = self.utils.create_embed(ctx, 0xb59809, "Higher Lower")
                 embed.add_field(name="Ist die Zahl kleiner oder größer?",
                                 value=f"Die gegebene Zahl ist: {game.shown}",
                                 inline=False)
                 higher_lower_message = await ctx.send(embed=embed, view=higher_lower_view)
                 response_object: Interaction = await self.bot.wait_for('interaction',
                       check=lambda
-                          interaction: interaction.user == return_author(ctx))
+                          interaction: interaction.user == self.utils.return_author(ctx))
                 if game.is_identical():
                     await self.handle_identical_numbers(ctx, game, embed,
                                                    higher_lower_view, higher_lower_message)
@@ -368,22 +377,22 @@ class GamingCommands:
                     money_user -= bet
                     embed_color = 0xb50909
                 higher_lower_view.clear_items()
-                embed = create_embed(ctx, embed_color, "Blackjack")
+                embed = self.utils.create_embed(ctx, embed_color, "Blackjack")
                 embed.add_field(name=game_response,
                                 value=description,
                                 inline=False)
                 embed.add_field(name="Aktueller Kontostand",
                                 value=f"{money_user} :coin:",
                                 inline=False)
-                self.currentlyGaming.remove(str(return_author(ctx).id))
-                await self.db.set_money_for_user(return_author(ctx).id, money_user)
+                self.currentlyGaming.remove(str(self.utils.return_author(ctx).id))
+                await self.bot.db.set_money_for_user(self.utils.return_author(ctx).id, money_user)
                 await response_object.response.edit_message(embed=embed, view=higher_lower_view)
             else:
                 await ctx.send(
-                                   f"{return_author(ctx).mention}. Du spielst schon!!!",
+                                   f"{self.utils.return_author(ctx).mention}. Du spielst schon!!!",
                                    delete_after=5)
         else:
-            await handle_invalid_bet(ctx, playable)
+            await self.handle_invalid_bet(ctx, playable)
 
     async def finalize_blackjack(self, ctx, bj, bet, money_user, user, sending_message, embed):
         """Beendet das Blackjack-Spiel."""
@@ -415,7 +424,7 @@ class GamingCommands:
         dealercardshow = [get_card_icon(card[0]) for card in bj.dealerdrawn]
         dealerausgabe = ", ".join(dealercardshow)
         embed.clear_fields()
-        embed.add_field(name=str(return_author(ctx).name) + f" | ```{bj.player}```",
+        embed.add_field(name=str(self.utils.return_author(ctx).name) + f" | ```{bj.player}```",
                         value=f"{playerausgabe}",
                         inline=True)
         embed.add_field(name="Dealer" + f" | ```{bj.dealer}```",
@@ -428,7 +437,7 @@ class GamingCommands:
                         value=f"{money_user} :coin:",
                         inline=False)
         self.currentlyGaming.remove(user)
-        await self.db.set_money_for_user(return_author(ctx).id, money_user)
+        await self.bot.db.set_money_for_user(self.utils.return_author(ctx).id, money_user)
         await sending_message.edit(embed=embed)
 
 
@@ -451,7 +460,7 @@ class GamingCommands:
                                                       view=create_blackjack_view(draw_button,
                                                                                  hold_button))
                 res = await self.bot.wait_for('interaction', check=
-                                         lambda interaction: interaction.user == return_author(ctx))
+                                         lambda interaction: interaction.user == self.utils.return_author(ctx))
                 action = res.data["custom_id"]
                 if action == draw_id:
                     bj.draw_another("player")
@@ -467,10 +476,10 @@ class GamingCommands:
         """Verarbeitet den Zug des Dealers."""
         while not bj.is_over():
             if not bj.is_overbought("player"):
-                embed = create_embed(ctx, 0xb59809, "Blackjack")
+                embed = self.utils.create_embed(ctx, 0xb59809, "Blackjack")
                 cardshow = [get_card_icon(card[0]) for card in bj.dealerdrawn]
                 dealerausgabe = ", ".join(cardshow)
-                embed.add_field(name=str(return_author(ctx).name) + f" | ```{bj.player}```",
+                embed.add_field(name=str(self.utils.return_author(ctx).name) + f" | ```{bj.player}```",
                                 value=f"{playerausgabe}", inline=True)
                 embed.add_field(name="Dealer" + f" | ```{bj.dealer}```", value=f"{dealerausgabe}",
                                 inline=True)
@@ -500,4 +509,4 @@ class GamingCommands:
                             inline=False)
             await ctx.send(embed=embed, view=view)
             await self.bot.wait_for('interaction',
-                               check=lambda interaction: interaction.user == return_author(ctx))
+                               check=lambda interaction: interaction.user == self.utils.return_author(ctx))

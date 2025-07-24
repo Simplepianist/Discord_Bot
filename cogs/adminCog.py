@@ -1,12 +1,14 @@
 from discord import Interaction, Member, app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
-from Util import variables
+
+from Commands.admin_commands import AdminCommands
 
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.adminCommands = AdminCommands(bot)
 
     @commands.hybrid_command(name="clear")
     @commands.is_owner()
@@ -64,7 +66,7 @@ class AdminCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `set_money_command` auf, um das Geld des Benutzers zu setzen.
         """
-        await set_money_command(ctx, member, user_money)
+        await self.adminCommands.set_money_command(ctx, member, user_money)
 
     @commands.hybrid_command(name="stop", aliases=["quit", "close"], description="Stoppt den Bot")
     @commands.is_owner()
@@ -77,11 +79,11 @@ class AdminCog(commands.Cog):
         - ctx (Context | Interaction): Der Kontext, in dem der Befehl ausgeführt wurde.
 
         Aktionen:
-        - Setzt die globale Variable `SHUTDOWN_INITIATED` auf True.
+        - Setzt die Variable `shutdown_initiated` auf True.
         - Ruft die Funktion `shutdown_command` auf, um den Bot herunterzufahren.
         """
-        variables.SHUTDOWN_INITIATED = True
-        await shutdown_command()
+        self.bot.shutdown_initiated = True
+        await self.adminCommands.shutdown_command()
 
     @commands.hybrid_command(name="reset")
     @commands.is_owner()
@@ -96,7 +98,7 @@ class AdminCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `reset_status_command` auf, um den Status des Bots zurückzusetzen.
         """
-        await reset_status_command(ctx)
+        await self.adminCommands.reset_status_command(ctx)
 
     @commands.hybrid_command(name="status", description="Setzt den Status des Bots")
     @app_commands.describe(
@@ -129,7 +131,7 @@ class AdminCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `set_status_command` auf, um den Status des Bots zu setzen.
         """
-        await set_status_command(ctx, name, status, art)
+        await self.adminCommands.set_status_command(ctx, name, status, art)
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))

@@ -4,7 +4,6 @@ from discord.ext.commands import Context
 
 from Commands.game_commands import GamingCommands
 from Commands.main_commands import MainCommands
-from Util.util_commands import execute_gaming_with_timeout
 
 
 class GamingCog(commands.Cog):
@@ -102,7 +101,7 @@ class GamingCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `execute_gaming_with_timeout` auf, um eine Runde Blackjack zu spielen.
         """
-        await execute_gaming_with_timeout(ctx, self.games.blackjack_command, bet)
+        await self.games.execute_gaming_with_timeout(ctx, self.games.blackjack_command, bet)
 
     @commands.hybrid_command(name="roulette", description="Spiel ein bisschen Roulette")
     @app_commands.describe(bet="Wieviel du setzen möchtest")
@@ -121,7 +120,7 @@ class GamingCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `execute_gaming_with_timeout` auf, um eine Runde Roulette zu spielen.
         """
-        await execute_gaming_with_timeout(ctx, self.games.roulette_command, bet, entry)
+        await self.games.execute_gaming_with_timeout(ctx, self.games.roulette_command, bet, entry)
 
     @commands.hybrid_command(name="higherlower", description="Spiel ein bisschen Higher/Lower")
     @app_commands.describe(bet="Wieviel du setzen möchtest")
@@ -137,7 +136,7 @@ class GamingCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `execute_gaming_with_timeout` auf, um eine Runde Higher/Lower zu spielen.
         """
-        await execute_gaming_with_timeout(ctx, self.games.higher_lower_command, bet)
+        await self.games.execute_gaming_with_timeout(ctx, self.games.higher_lower_command, bet)
 
     @commands.hybrid_command(name="rob", description="Raube die Bank oder einen Spieler")
     @app_commands.describe(may_member="Wähle eine Spieler oder Raube lieber die Bank")
@@ -153,7 +152,7 @@ class GamingCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `execute_gaming_with_timeout` auf, um den Raubbefehl auszuführen.
         """
-        await execute_gaming_with_timeout(ctx, self.games.rob_command, may_member)
+        await self.games.execute_gaming_with_timeout(ctx, self.games.rob_command, may_member)
 
 async def setup(bot):
     await bot.add_cog(GamingCog(bot))

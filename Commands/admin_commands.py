@@ -17,7 +17,9 @@ Importierte Module:
 import logging
 from discord import Interaction, Streaming, Activity, ActivityType, Status, Member, Embed, Colour
 from discord.ext.commands import Context
-from Util.util_commands import check_admin, get_money_for_user, return_author
+
+from Util.util_commands import Utility
+
 
 class AdminCommands:
     """
@@ -26,6 +28,7 @@ class AdminCommands:
 
     def __init__(self, bot):
         self.bot = bot
+        self.utils = Utility(bot)
 
 
     async def shutdown_command(self):
@@ -51,7 +54,7 @@ class AdminCommands:
         Returns:
         None
         """
-        if check_admin(ctx):
+        if self.utils.check_admin(ctx):
             await self.bot.change_presence(
                 activity=Streaming(name=".help", url=self.bot.config["streamURL"]))
         else:
@@ -68,7 +71,7 @@ class AdminCommands:
         Returns:
         None
         """
-        if not check_admin(ctx):
+        if not self.utils.check_admin(ctx):
             await ctx.send("Keine Berechtigung", ephemeral=True, delete_after=5)
             return
 
@@ -121,7 +124,7 @@ class AdminCommands:
                     title="Bank", colour=Colour(0xc6c910))
                 embed.add_field(
                     name=user,
-                    value=f"Money: {await get_money_for_user(return_author(ctx))}", inline=False
+                    value=f"Money: {await self.utils.get_money_for_user(self.utils.return_author(ctx))}", inline=False
                 )
                 await ctx.send(embed=embed)
         except ValueError:
