@@ -6,3 +6,4 @@ six==1.17.0
 cryptography==45.0.2
 SQLAlchemy~=2.0.41
 alembic~=1.16.4
+asyncpg~=0.30.0
