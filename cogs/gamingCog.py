@@ -87,7 +87,7 @@ class GamingCog(commands.Cog):
         """
         await self.games.money_command(ctx, user)
 
-    @commands.hybrid_command(name="blackjack", description="Play a game of blackjack")
+    @commands.hybrid_command(name="blackjack", description="Play a game of blackjack", aliases=["bj"])
     @app_commands.describe(bet="Wieviel du setzen möchtest")
     @app_commands.rename(bet="einsatz")
     async def blackjack_slash(self, ctx: Context | Interaction, bet: int):

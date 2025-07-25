@@ -4,9 +4,12 @@ Database access module using asyncpg for asynchronous PostgreSQL operations.
 This module provides a DbController class to manage database connections and execute queries.
 """
 import os
+import asyncio
 import datetime
 import logging
 import asyncpg
+from alembic.config import Config
+from alembic import command
 
 class DbController:
     """
@@ -23,15 +26,20 @@ class DbController:
         Initialize the connection pool using asyncpg
         with parameters from environment variables.
         """
+        self.run_migrations()
         self.pool = await asyncpg.create_pool(
             user=os.getenv('DB_USER'),
             password=os.getenv('DB_PASSWORD'),
             host=os.getenv('DB_HOST'),
-            port=int(os.getenv('DB_PORT', 5432)),
+            port=int(os.getenv('DB_PORT', '5432')),
             database=os.getenv('DB_NAME'),
             min_size=1,
             max_size=10
         )
+
+    def run_migrations(self):
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
 
     async def close_pool(self):
         """

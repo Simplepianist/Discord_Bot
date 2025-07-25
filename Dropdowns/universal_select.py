@@ -40,8 +40,7 @@ class UniversalSelect(Select):
         self.response = response
         self.embed = self.utils.create_select_embed(user)
         self.view = view
-        self.loaded_config = self.utils.load_config("embed")
-        self.embed.set_thumbnail(url=self.loaded_config["embeds_thumbnail"])
+        self.loaded_config = {}
         super().__init__(placeholder="Wähle eine Category",
                          max_values=1,
                          min_values=1,
@@ -53,6 +52,8 @@ class UniversalSelect(Select):
 
         :param interaction: Die Interaktion, die die Auswahl ausgelöst hat.
         """
+        self.loaded_config = await self.utils.load_config("embed")
+        self.embed.set_thumbnail(url=self.loaded_config["embeds_thumbnail"])
         self.embed.clear_fields()
         if interaction.user.id == self.user.id:
             for element in self.response[self.values[0]]:

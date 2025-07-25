@@ -62,8 +62,6 @@ import os
 import json
 import logging
 import discord
-from alembic.config import Config
-from alembic import command
 from discord import Streaming
 from discord.ext.commands import Bot
 from Database.db_access import DbController
@@ -90,10 +88,6 @@ def load_config():
     except:
         pass
     return json_file
-
-def run_migrations():
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
 
 class SimpleBot(Bot):
     def __init__(self, **kwargs):
@@ -143,6 +137,7 @@ class SimpleBot(Bot):
                            delete_after=5)
         else:
             self.logging.error("Error: %s (caused by %s)", error, ctx.author.global_name)
+            raise error
 
 intents = discord.Intents.default()
 intents.all()
@@ -151,7 +146,6 @@ intents.message_content = True
 simpleBot = SimpleBot(command_prefix=".", help_command=None, intents=intents, case_insensitive=True)
 
 try:
-    run_migrations()
     simpleBot.run(os.environ["token"])
 finally:
     logging.shutdown()
