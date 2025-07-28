@@ -1,74 +1,40 @@
-"""
-Dieses Modul enthält die Implementierung eines Discord-Bots
-mit verschiedenen Befehlen und Ereignishandlern.
-Der Bot verwendet die discord.py-Bibliothek und bietet Funktionen
-wie das Synchronisieren von Befehlen,
-das Verwalten von Benutzerkonten und das Spielen von Minispielen.
-
-Importierte Module:
-- os: Zum Zugriff auf Umgebungsvariablen.
-- logging: Zum Protokollieren von Ereignissen und Fehlern.
-- discord: Zum Interagieren mit der Discord-API.
-- app_commands: Zum Erstellen von Anwendungsbefehlen.
-- discord.ext.commands: Zum Erstellen von Befehlen und Ereignishandlern.
-- Commands: Enthält verschiedene Befehlsimplementierungen.
-- Util: Enthält Hilfsfunktionen und Variablen.
-
-Konstanten:
-- SHUTDOWN_INITIATED: Ein boolescher Wert, der anzeigt, ob der Shutdown-Prozess initiiert wurde.
-
-Funktionen:
-- on_ready: Wird aufgerufen, wenn der Bot bereit ist.
-- on_command_error: Wird aufgerufen, wenn ein Fehler bei der Befehlsausführung auftritt.
-- clear_commands: Löscht alle Befehle aus dem Befehlsbaum.
-- load_commands: Synchronisiert die Befehle mit dem Befehlsbaum.
-- _setMoney: Setzt das Geld eines Benutzers.
-- _shutdown: Fährt den Bot herunter.
-- _reset: Setzt den Status des Bots zurück.
-- _setStatus: Setzt den Status des Bots.
-- _help: Zeigt das Hilfemenü an.
-- _rules: Zeigt die Regeln an.
-- _aliases: Zeigt die Aliasliste der Befehle an.
-- _ping: Antwortet mit "Pong".
-- _invite: Gibt den Einladungslink für den Server aus.
-- _stream: Gibt den Streamlink von Simplebox aus.
-- _scoreboard: Zeigt das Scoreboard für die meisten Coins an.
-- _daily: Führt den täglichen Befehl aus.
-- _send: Sendet Geld an einen anderen Benutzer.
-- _money: Zeigt das Geld eines Benutzers an.
-- _robbing: Führt den Raubbefehl aus.
-- _blackjack: Spielt eine Runde Blackjack.
-- _roulette: Spielt eine Runde Roulette.
-- _higherLower: Spielt eine Runde Higher/Lower.
-- _quote: Gibt ein zufälliges Anime-Zitat aus.
-- _qotd: Gibt das Zitat des Tages aus.
-- rules: Zeigt die Regeln der Spiele an.
-- aliases: Zeigt die Aliasliste aller Befehle an.
-- ping: Antwortet mit "Pong".
-- invite: Gibt den Einladungslink für den Server aus.
-- stream: Gibt den Streamlink von Simplebox aus.
-- scoreboard: Zeigt das Scoreboard für die Games an.
-- daily: Führt den täglichen Befehl aus.
-- send: Sendet Geld an einen anderen Benutzer.
-- money: Zeigt das Geld eines Benutzers an.
-- blackjack: Spielt eine Runde Blackjack.
-- roulette: Spielt eine Runde Roulette.
-- higher_lower: Spielt eine Runde Higher/Lower.
-- robbing: Führt den Raubbefehl aus.
-- quote: Gibt ein zufälliges Anime-Zitat aus.
-- qotd: Gibt das Zitat des Tages aus.
-"""
 import os
 import json
 import logging
 import discord
 from discord import Streaming
+from discord import Status
 from discord.ext.commands import Bot
 from Database.db_access import DbController
 from cogs.CogSelector import CogSelector
 from discord.app_commands import CommandInvokeError, CommandOnCooldown
 from discord.ext.commands import Context, BadArgument, MissingRequiredArgument, \
     CheckFailure, NotOwner
+
+# Configure logging ONCE at the top, before anything else
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Console output
+        logging.FileHandler('bot.log')  # File output
+    ],
+    force=True
+)
+
+# Suppress specific loggers AFTER basic config
+logging.getLogger('discord.client').setLevel(logging.WARNING)
+logging.getLogger('discord.gateway').setLevel(logging.WARNING)
+logging.getLogger('discord.http').setLevel(logging.WARNING)
+# More aggressive alembic logging suppression
+logging.getLogger('alembic').setLevel(logging.WARNING)
+logging.getLogger('alembic.runtime.migration').setLevel(logging.WARNING)
+logging.getLogger('alembic.ddl.postgresql').setLevel(logging.WARNING)
+
+# Keep our important loggers at INFO level
+logging.getLogger('SimpleBot').setLevel(logging.INFO)
+logging.getLogger('DbController').setLevel(logging.INFO)
+
 
 def load_config():
     """
@@ -89,12 +55,13 @@ def load_config():
         pass
     return json_file
 
+
 class SimpleBot(Bot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.owner: discord.User = self.get_user(self.owner_id)
         self.shutdown_initiated = False
-        self.logging = logging
+        self.logging = logging.getLogger('SimpleBot')
         self.db = DbController()
         self.config = load_config()
 
@@ -105,17 +72,27 @@ class SimpleBot(Bot):
         synchronisiert die Befehle und setzt den Status des Bots.
 
         Aktionen:
+        - Führt Datenbank-Migrationen aus.
         - Initialisiert den Datenbank-Pool.
         - Konfiguriert das Logging mit einem bestimmten Format und speichert die Logs in einer Datei.
         - Synchronisiert die Befehle des Bots.
         - Setzt den Besitzer des Bots.
         - Ändert die Präsenz des Bots zu einem Streaming-Status mit einem bestimmten Namen und URL.
         """
-        self.logging.basicConfig(level=logging.INFO,
-                                 format='%(asctime)s:%(levelname)s:%(message)s')
+        # Test logger immediately
+        self.logging.info("on_ready() method started")
+
         await self.add_cog(CogSelector(self))
-        await self.change_presence(activity=Streaming(name=".help", url=self.config["streamURL"]))
+        self.logging.info("CogSelector added successfully")
+
+        await self.change_presence(status=Status.offline, activity=discord.Game(name="Starte..."))
+
+        # Run migrations and initialize database
+        await self.db.run_migrations()
         await self.db.init_pool()
+
+        await self.change_presence(activity=Streaming(name=".help", url=self.config["streamURL"]))
+
         await self.tree.sync()
         self.logging.info("Sync gestartet (1h)")
 
@@ -138,6 +115,7 @@ class SimpleBot(Bot):
         else:
             self.logging.error("Error: %s (caused by %s)", error, ctx.author.global_name)
             raise error
+
 
 intents = discord.Intents.default()
 intents.all()

@@ -9,6 +9,7 @@ class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.adminCommands = AdminCommands(bot)
+        self.bot.logging.info("AdminCog loaded")
 
     @commands.hybrid_command(name="clear")
     @commands.is_owner()

@@ -11,6 +11,7 @@ class GamingCog(commands.Cog):
         self.bot = bot
         self.games = GamingCommands(bot)
         self.mainCommands = MainCommands(bot)
+        self.bot.logging.info("GamingCog loaded")
 
     @commands.hybrid_command(name="rule", aliases=["rules"], description="Hier findest du Regeln der Spiele")
     async def rules(self, ctx: Context | Interaction):

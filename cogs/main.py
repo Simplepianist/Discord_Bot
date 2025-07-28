@@ -9,6 +9,7 @@ class MainCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.mainCommands = MainCommands(bot)
+        self.bot.logging.info("MainCog loaded")
 
     @commands.hybrid_command(name="help", description="Gives you the Help-Menu", aliases=["h"])
     async def help_menu_slash(self, ctx: Context | Interaction):

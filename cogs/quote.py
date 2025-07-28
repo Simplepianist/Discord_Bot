@@ -8,6 +8,7 @@ class QuoteCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.socialCommands = SocialCommands(bot)
+        self.bot.logging.info("QuoteCog loaded")
 
     @commands.hybrid_command(name="quote", description="Gives a random Anime Quote")
     async def quote_slash(self, ctx: Context | Interaction):

@@ -4,7 +4,6 @@ Database access module using asyncpg for asynchronous PostgreSQL operations.
 This module provides a DbController class to manage database connections and execute queries.
 """
 import os
-import asyncio
 import datetime
 import logging
 import asyncpg
@@ -20,32 +19,130 @@ class DbController:
         Initialize the DbController with a connection pool set to None.
         """
         self.pool = None
+        self.logger = logging.getLogger('DbController')
+
+    async def run_migrations(self):
+        """
+        Run database migrations using Alembic.
+        Should be called before initializing the connection pool.
+        """
+        try:
+            self.logger.info("Starting database migrations...")
+
+            import asyncio
+            import logging
+            import sys
+            from io import StringIO
+
+            # Capture the current logging state more comprehensively
+            root_logger = logging.getLogger()
+
+            # Store all current loggers and their configurations
+            logger_states = {}
+            for name in logging.Logger.manager.loggerDict:
+                logger = logging.getLogger(name)
+                logger_states[name] = {
+                    'level': logger.level,
+                    'handlers': logger.handlers[:],
+                    'propagate': logger.propagate,
+                    'disabled': logger.disabled
+                }
+
+            # Store root logger state
+            root_state = {
+                'level': root_logger.level,
+                'handlers': root_logger.handlers[:],
+                'disabled': root_logger.disabled
+            }
+
+            def run_alembic_sync():
+                # Create a minimal alembic config that doesn't interfere with logging
+                alembic_cfg = Config("alembic.ini")
+
+                # Completely disable alembic's logging configuration
+                alembic_cfg.attributes['configure_logger'] = False
+
+                # Temporarily redirect alembic's output to prevent it from affecting our loggers
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
+
+                try:
+                    # Capture alembic output instead of letting it interfere
+                    capture_stdout = StringIO()
+                    capture_stderr = StringIO()
+
+                    # Only redirect if we want to suppress alembic output
+                    # Comment out these lines if you want to see alembic output
+                    sys.stdout = capture_stdout
+                    sys.stderr = capture_stderr
+
+                    # Run the migration
+                    command.upgrade(alembic_cfg, "head")
+
+                finally:
+                    # Always restore stdout/stderr
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
+
+            # Run alembic in executor
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, run_alembic_sync)
+
+            # Restore all logger configurations
+            # First restore root logger
+            root_logger.setLevel(root_state['level'])
+            root_logger.handlers = root_state['handlers']
+            root_logger.disabled = root_state['disabled']
+
+            # Then restore all other loggers
+            for name, state in logger_states.items():
+                logger = logging.getLogger(name)
+                logger.setLevel(state['level'])
+                logger.handlers = state['handlers']
+                logger.propagate = state['propagate']
+                logger.disabled = state['disabled']
+
+            # Clear any handlers that alembic might have added
+            for handler in root_logger.handlers[:]:
+                if hasattr(handler, 'stream') and hasattr(handler.stream, 'name'):
+                    # Remove any file handlers that alembic might have added
+                    if 'alembic' in str(handler.stream.name).lower():
+                        root_logger.removeHandler(handler)
+
+            self.logger.info("Database migrations completed successfully")
+
+        except Exception as e:
+            self.logger.error(f"Migration failed: {e}")
+            raise
 
     async def init_pool(self):
         """
         Initialize the connection pool using asyncpg
         with parameters from environment variables.
         """
-        self.run_migrations()
-        self.pool = await asyncpg.create_pool(
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            host=os.getenv('DB_HOST'),
-            port=int(os.getenv('DB_PORT', '5432')),
-            database=os.getenv('DB_NAME'),
-            min_size=1,
-            max_size=10
-        )
-
-    def run_migrations(self):
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
+        try:
+            self.logger.info("Initializing database connection pool...")
+            self.pool = await asyncpg.create_pool(
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD'),
+                host=os.getenv('DB_HOST'),
+                port=int(os.getenv('DB_PORT', '5432')),
+                database=os.getenv('DB_NAME'),
+                min_size=1,
+                max_size=10
+            )
+            self.logger.info("Database connection pool initialized successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to initialize database pool: {e}")
+            raise
 
     async def close_pool(self):
         """
         Close the connection pool.
         """
-        await self.pool.close()
+        if self.pool:
+            await self.pool.close()
+            self.logger.info("Database connection pool closed")
 
     async def execute_query(self, query, params=None):
         """
