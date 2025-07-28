@@ -32,6 +32,5 @@ class Robbing(Base):
 
 class Cogs(Base):
     __tablename__ = "cogs"
-    identifier = Column(BigInteger, primary_key=True)
-    name = Column(String(50), nullable=False)
+    name = Column(String(50), primary_key=True, nullable=False)
     enabled = Column(Integer, nullable=False, default=1)  # 1 for enabled, 0 for disabled

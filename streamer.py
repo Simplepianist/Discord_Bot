@@ -59,6 +59,7 @@ def load_config():
 class SimpleBot(Bot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.currentlyGaming = []
         self.owner: discord.User = self.get_user(self.owner_id)
         self.shutdown_initiated = False
         self.logging = logging.getLogger('SimpleBot')
@@ -82,14 +83,17 @@ class SimpleBot(Bot):
         # Test logger immediately
         self.logging.info("on_ready() method started")
 
-        await self.add_cog(CogSelector(self))
-        self.logging.info("CogSelector added successfully")
+
 
         await self.change_presence(status=Status.offline, activity=discord.Game(name="Starte..."))
 
         # Run migrations and initialize database
         await self.db.run_migrations()
         await self.db.init_pool()
+        cog_states = await self.db.load_cogs_state()
+
+        await self.add_cog(CogSelector(self, cog_states))
+        self.logging.info("CogSelector added successfully")
 
         await self.change_presence(activity=Streaming(name=".help", url=self.config["streamURL"]))
 

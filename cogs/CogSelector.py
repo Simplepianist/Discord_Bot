@@ -1,7 +1,9 @@
+import asyncio
 import os
 from discord.ext import commands
 from discord import app_commands, Interaction, Embed
 from discord.ext.commands import Context
+from Database.db_tables import Cogs
 
 
 def get_cog_choices():
@@ -21,7 +23,7 @@ def get_all_cog_names():
 
 
 class CogSelector(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot, load_cogs: list[Cogs]):
         self.bot = bot
         self.bot.logging.info(f"CogSelector loaded with {len(get_cog_choices())} cogs.")
 
@@ -34,6 +36,14 @@ class CogSelector(commands.Cog):
         for cog in all_cogs:
             status[cog] = cog in loaded_cogs
         return status
+
+    async def _update_cog_database(self, cog_name: str, enabled: bool):
+        """Update cog state in database - runs in background"""
+        try:
+            await self.bot.db.save_cog((cog_name, enabled))  # Pass as tuple
+            self.bot.logging.info(f"Database updated for cog: {cog_name}")
+        except Exception as e:
+            self.bot.logging.error(f"Failed to update database for cog {cog_name}: {e}")
 
     @commands.hybrid_command(name="coglist", description="Zeige den Status aller Cogs")
     @commands.is_owner()
@@ -89,6 +99,7 @@ class CogSelector(commands.Cog):
 
             try:
                 await self.bot.load_extension(f"cogs.{c}")
+                asyncio.create_task(self._update_cog_database(c, True))
                 results.append(f"✅ `{c}` geladen")
                 msg = "\n".join(results)
                 self.bot.logging.info(
@@ -114,6 +125,8 @@ class CogSelector(commands.Cog):
                 results.append(f"⚠️ `{c}` ist bereits geladen")
             except Exception as e:
                 results.append(f"❌ Fehler bei `{c}`: {e}")
+
+
 
     @commands.hybrid_command(name="unload_cogs", description="Entlade ein oder alle Cogs")
     @app_commands.choices(cog=get_cog_choices())
@@ -142,8 +155,12 @@ class CogSelector(commands.Cog):
 
             try:
                 await self.bot.unload_extension(f"cogs.{c}")
+                asyncio.create_task(self._update_cog_database(c, False))
                 results.append(f"✅ `{c}` entladen")
                 msg = "\n".join(results)
+                self.bot.logging.info(
+                    "Unloaded cogs: " + ", ".join([c for c in cogs_to_unload if status.get(c, False)]))
+
                 if isinstance(ctx, Interaction):
                     await ctx.followup.send(msg + "\n🔄 Syncing commands...")
                 else:
@@ -160,12 +177,12 @@ class CogSelector(commands.Cog):
                     await ctx.followup.send(follow_msg)
                 else:
                     await ctx.send(follow_msg)
-                self.bot.logging.info(
-                    "Unloaded cogs: " + ", ".join([c for c in cogs_to_unload if status.get(c, False)]))
             except commands.ExtensionNotLoaded:
                 results.append(f"⚠️ `{c}` ist bereits entladen")
             except Exception as e:
                 results.append(f"❌ Fehler bei `{c}`: {e}")
+
+
 
     @commands.hybrid_command(name="reload_cogs", description="Lade ein oder alle geladene Cogs neu")
     @app_commands.choices(cog=get_cog_choices())
@@ -220,8 +237,6 @@ class CogSelector(commands.Cog):
                 results.append(f"⚠️ `{c}` ist nicht geladen - kann nicht neu geladen werden")
             except Exception as e:
                 results.append(f"❌ Fehler bei `{c}`: {e}")
-
-
 
 
 async def setup(bot):
