@@ -1,219 +1,268 @@
 """
-Database access module using aiomysql for asynchronous MySQL operations.
+Database access module using SQLAlchemy ORM for asynchronous PostgreSQL operations.
 
-This module provides a DbController class to manage database connections and execute queries.
+This module provides a DbController class to manage database connections and execute queries using db_tables definitions.
 """
 import os
 import datetime
 import logging
-import aiomysql
+import urllib.parse
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select, update
+from alembic.config import Config
+from alembic import command
 
-
+from .db_tables import User, Money, Daily, Robbing, Cogs
 
 class DbController:
     """
-        Controller for managing database connections and executing queries.
+        Controller for managing database connections and executing queries via SQLAlchemy ORM.
     """
     def __init__(self):
+        self.engine = None
+        self.async_session = None
+        self.logger = logging.getLogger('DbController')
+
+    async def run_migrations(self):
         """
-        Initialize the DbController with a connection pool set to None.
+        Run database migrations using Alembic.
+        Should be called before initializing the connection pool.
         """
-        self.pool = None
+        try:
+            self.logger.info("Starting database migrations...")
+
+            import asyncio
+            import sys
+            from io import StringIO
+
+            # Capture the current logging state more comprehensively
+            root_logger = logging.getLogger()
+
+            # Store all current loggers and their configurations
+            logger_states = {}
+            for name in logging.Logger.manager.loggerDict:
+                logger = logging.getLogger(name)
+                logger_states[name] = {
+                    'level': logger.level,
+                    'handlers': logger.handlers[:],
+                    'propagate': logger.propagate,
+                    'disabled': logger.disabled
+                }
+
+            # Store root logger state
+            root_state = {
+                'level': root_logger.level,
+                'handlers': root_logger.handlers[:],
+                'disabled': root_logger.disabled
+            }
+
+            def run_alembic_sync():
+                # Create a minimal alembic config that doesn't interfere with logging
+                alembic_cfg = Config("alembic.ini")
+
+                # Completely disable alembic's logging configuration
+                alembic_cfg.attributes['configure_logger'] = False
+
+                # Temporarily redirect alembic's output to prevent it from affecting our loggers
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
+
+                try:
+                    # Capture alembic output instead of letting it interfere
+                    capture_stdout = StringIO()
+                    capture_stderr = StringIO()
+
+                    # Only redirect if we want to suppress alembic output
+                    # Comment out these lines if you want to see alembic output
+                    sys.stdout = capture_stdout
+                    sys.stderr = capture_stderr
+
+                    # Run the migration
+                    command.upgrade(alembic_cfg, "head")
+
+                finally:
+                    # Always restore stdout/stderr
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
+
+            # Run alembic in executor
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, run_alembic_sync)
+
+            # Restore all logger configurations
+            # First restore root logger
+            root_logger.setLevel(root_state['level'])
+            root_logger.handlers = root_state['handlers']
+            root_logger.disabled = root_state['disabled']
+
+            # Then restore all other loggers
+            for name, state in logger_states.items():
+                logger = logging.getLogger(name)
+                logger.setLevel(state['level'])
+                logger.handlers = state['handlers']
+                logger.propagate = state['propagate']
+                logger.disabled = state['disabled']
+
+            # Clear any handlers that alembic might have added
+            for handler in root_logger.handlers[:]:
+                if hasattr(handler, 'stream') and hasattr(handler.stream, 'name'):
+                    # Remove any file handlers that alembic might have added
+                    if 'alembic' in str(handler.stream.name).lower():
+                        root_logger.removeHandler(handler)
+
+            self.logger.info("Database migrations completed successfully")
+
+        except Exception as e:
+            self.logger.error("Migration failed: %s", e)
+            raise
 
     async def init_pool(self):
         """
-        Initialize the connection pool using aiomysql
-        with parameters from environment variables.
+        Initialize the async SQLAlchemy engine and sessionmaker.
         """
-        self.pool = await aiomysql.create_pool(
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            host=os.getenv('DB_HOST'),
-            port=3306,
-            db=os.getenv('DB_NAME'),
-            minsize=1,
-            maxsize=10,
-            autocommit=True
-        )
+        try:
+            self.logger.info("Initializing database connection engine...")
+            user = urllib.parse.quote_plus(os.getenv('DB_USER', ''))
+            password = urllib.parse.quote_plus(os.getenv('DB_PASSWORD', ''))
+            host = os.getenv('DB_HOST', '')
+            port = os.getenv('DB_PORT', '5432')
+            dbname = os.getenv('DB_NAME', '')
+            db_url = (
+                f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{dbname}"
+            )
+            self.engine = create_async_engine(db_url, echo=False, future=True)
+            self.async_session = sessionmaker(
+                self.engine, expire_on_commit=False, class_=AsyncSession
+            )
+            self.logger.info("Database engine initialized successfully")
+        except Exception as e:
+            self.logger.error("Failed to initialize database engine: %s", e)
+            raise
+
+    async def load_cogs_state(self):
+        """
+        Lade alle Cogs und deren Status aus der Datenbank.
+        """
+        async with self.async_session() as session:
+            stmt = select(Cogs)
+            result = await session.execute(stmt)
+            return result.scalars().all()
+
+    async def save_cog(self, cog: tuple[str, bool]):
+        """
+        Speichert den Status eines einzelnen Cogs als Tupel (Name, aktiviert) in der Datenbank.
+        """
+        async with self.async_session() as session:
+            cog_name, enabled = cog
+            existing_cog = await session.get(Cogs, cog_name)
+            if existing_cog:
+                existing_cog.state = enabled
+            else:
+                session.add(Cogs(name=cog_name, enabled=int(enabled)))
+            await session.commit()
+            self.logger.info("Cog '%s' state saved successfully", cog_name)
 
     async def close_pool(self):
         """
-        Close the connection pool.
+        Dispose the engine.
         """
-        self.pool.close()
-        await self.pool.wait_closed()
-
-    async def execute_query(self, query, params=None):
-        """
-        Execute a SQL query with optional parameters.
-
-        :param query: The SQL query to execute.
-        :param params: Optional parameters for the SQL query.
-        :return: The result of the query.
-        """
-        async with self.pool.acquire() as conn, conn.cursor() as cur:
-            await cur.execute(query, params)
-            result = await cur.fetchall()
-            return result
+        if self.engine:
+            await self.engine.dispose()
+            self.logger.info("Database engine disposed")
 
     async def get_users_with_money(self):
         """
         Retrieve all users ordered by their money in descending order.
-
-        :return: The result of the query.
         """
-        query = "SELECT * FROM `money` ORDER BY money DESC"
-        return await self.execute_query(query)
-
-    async def create_new_user(self, userid):
-        """
-        Create a new user with the given user ID.
-
-        :param userid: The ID of the user to create.
-        :return: The result of the query.
-        """
-        query = 'insert into users values (%s, "user")'
-        return await self.execute_query(query, (userid,))
+        async with self.async_session() as session:
+            stmt = select(Money).order_by(Money.money.desc())
+            result = await session.execute(stmt)
+            return result.scalars().all()
 
     async def get_money_for_user(self, userid):
         """
         Retrieve the amount of money for a given user ID.
         If the user does not exist, create the user and set initial money.
-
-        :param userid: The ID of the user.
-        :return: The amount of money the user has.
         """
-        if await self.user_exists_in_table('money', userid):
-            query = "SELECT money FROM money WHERE identifier = %s"
-            result = await self.execute_query(query, (userid,))
-            if result:
-                return result[0][0]
-        else:
-            if not await self.user_exists_in_table("users", userid):
-                await self.create_new_user(userid)
-            query = "INSERT INTO money (identifier, money) VALUES (%s, %s)"
-            await self.execute_query(query, (userid, 1000))
+        async with self.async_session() as session:
+            money_obj = await session.get(Money, userid)
+            if money_obj:
+                return money_obj.money
+            user_obj = await session.get(User, userid)
+            if not user_obj:
+                user_obj = User(identifier=userid, role="user")
+                session.add(user_obj)
+                await session.commit()
+            money_obj = Money(identifier=userid, money=1000)
+            session.add(money_obj)
+            await session.commit()
             return 1000
 
     async def set_money_for_user(self, userid, money):
         """
         Set the amount of money for a given user ID.
-
-        :param userid: The ID of the user.
-        :param money: The amount of money to set.
         """
-        query = "UPDATE money SET money = %s WHERE identifier = %s"
-        await self.execute_query(query, (money, userid))
+        async with self.async_session() as session:
+            stmt = update(Money).where(Money.identifier == userid).values(money=money)
+            await session.execute(stmt)
+            await session.commit()
 
     async def get_daily(self, userid):
         """
         Check if the user can receive a daily reward.
         If the user does not exist, create the user and set initial daily data.
+        """
+        async with self.async_session() as session:
+            daily_obj = await session.get(Daily, userid)
+            if daily_obj:
+                can_daily = daily_obj.last_daily < datetime.date.today()
+                return can_daily
+            user_obj = await session.get(User, userid)
+            if not user_obj:
+                user_obj = User(identifier=userid, role="user")
+                session.add(user_obj)
+                await session.commit()
+            daily_obj = Daily(identifier=userid, last_daily=datetime.date.today(), streak=0)
+            session.add(daily_obj)
+            await session.commit()
+            return True
 
-        :param userid: The ID of the user.
-        :return: True if the user can receive a daily reward, False otherwise.
+    async def update_streak_and_get_bonus(self, userid: int):
         """
-        if await self.user_exists_in_table('daily', userid):
-            query = """
-                SELECT CASE WHEN EXISTS (
-                    SELECT * FROM daily
-                    WHERE identifier = %s
-                    AND last_daily < CURDATE()
-                )
-                THEN 1
-                ELSE 0 END;
-            """
-            result = await self.execute_query(query, (userid,))
-            return bool(result[0][0]) if result else False
-        if not await self.user_exists_in_table("users", userid):
-            await self.create_new_user(userid)
-        query = "INSERT INTO daily (identifier, last_daily, streak) VALUES (%s, CURDATE(), 0)"
-        await self.execute_query(query, (userid,))
-        return True
-
-    async def set_streak(self, userid, streak):
+        Aktualisiert die Streak eines Users und berechnet den Bonus.
+        Setzt die Streak zurück, falls der User nicht gestern aktiv war.
         """
-        Set the streak for a given user ID.
-        If the streak is less than or equal to 61, update the streak, otherwise reset it.
-
-        :param userid: The ID of the user.
-        :param streak: The streak value to set.
-        """
-        query = """
-            SELECT CASE WHEN EXISTS (
-                SELECT * FROM daily
-                WHERE identifier = %s
-                AND last_daily + INTERVAL 1 DAY = CURDATE()
-            )
-            THEN 1
-            ELSE 0 END;
-        """
-        result = await self.execute_query(query, (userid,))
-        update = bool(result[0][0]) if result else False
-        if update:
-            if streak <= 61:
-                query = "UPDATE daily SET streak = %s WHERE identifier = %s"
-                await self.execute_query(query, (streak, userid))
-        else:
-            query = "UPDATE daily SET streak = 0 WHERE identifier = %s"
-            await self.execute_query(query, (userid,))
-
-    async def get_streak_bonus(self, userid: int):
-        """
-        Retrieve the streak bonus for a given user ID. Update the streak accordingly.
-
-        :param userid: The ID of the user.
-        :return: The streak bonus.
-        """
-        query = """
-            SELECT CASE WHEN EXISTS (
-                SELECT * FROM daily
-                WHERE identifier = %s
-                AND last_daily + INTERVAL 1 DAY = CURDATE()
-            )
-            THEN (SELECT streak + 1 FROM daily WHERE identifier = %s)
-            ELSE 0 END;
-        """
-        result = await self.execute_query(query, (userid, userid))
-        streak = int(result[0][0]) if result else 0
-        bonus = min(streak * 5, 300)
-        await self.set_streak(userid, streak)
-        return bonus
+        async with self.async_session() as session:
+            daily_obj = await session.get(Daily, userid)
+            streak = 0
+            if daily_obj:
+                if daily_obj.last_daily + datetime.timedelta(days=1) == datetime.date.today():
+                    streak = min(daily_obj.streak + 1, 61)
+                    daily_obj.streak = streak
+                else:
+                    daily_obj.streak = 0
+                await session.commit()
+            bonus = min(streak * 5, 300)
+            return bonus
 
     async def set_daily(self, userid):
         """
         Set the last daily date to the current date for a given user ID.
-
-        :param userid: The ID of the user.
         """
-        query = "UPDATE daily SET last_daily = CURDATE() WHERE identifier = %s"
-        await self.execute_query(query, (userid,))
-
-    async def user_exists_in_table(self, table, userid):
-        """
-        Check if a user exists in a given table.
-
-        :param table: The table to check.
-        :param userid: The ID of the user.
-        :return: True if the user exists, False otherwise.
-        """
-        query = f"""
-            SELECT CASE WHEN EXISTS (
-                SELECT * FROM {table}
-                WHERE identifier = %s
-            )
-            THEN 1
-            ELSE 0 END;
-        """
-        result = await self.execute_query(query, (userid,))
-        return bool(result[0][0]) if result else False
+        async with self.async_session() as session:
+            daily_obj = await session.get(Daily, userid)
+            if daily_obj:
+                daily_obj.last_daily = datetime.date.today()
+                await session.commit()
+            else:
+                daily_obj = Daily(identifier=userid, last_daily=datetime.date.today(), streak=0)
+                session.add(daily_obj)
+                await session.commit()
 
     async def set_robbing_timeout(self, userid, auszeit):
         """
         Set the robbing timeout for a given user ID.
-
-        :param userid: The ID of the user.
-        :param auszeit: The timeout duration in days.
         """
         date = datetime.date.today()
         next_robbing = date + datetime.timedelta(days=auszeit)
@@ -222,38 +271,35 @@ class DbController:
     async def insert_robbing(self, userid):
         """
         Insert a new robbing record for a given user ID.
-
-        :param userid: The ID of the user.
         """
-        query = "INSERT INTO robbing (identifier, next_robbing) VALUES (%s, CURDATE())"
-        await self.execute_query(query, userid)
+        async with self.async_session() as session:
+            robbing_obj = Robbing(identifier=userid, next_robbing=datetime.date.today())
+            session.add(robbing_obj)
+            await session.commit()
 
     async def update_robbing(self, userid, next_robbing):
         """
         Update the robbing date for a given user ID.
-
-        :param userid: The ID of the user.
-        :param next_robbing: The next robbing date.
         """
-        formatted_date = next_robbing.strftime('%Y-%m-%d') if next_robbing else 'CURDATE()'
-        query = "UPDATE robbing SET next_robbing = %s WHERE identifier = %s"
-        await self.execute_query(query, (formatted_date, userid))
+        async with self.async_session() as session:
+            robbing_obj = await session.get(Robbing, userid)
+            if robbing_obj:
+                robbing_obj.next_robbing = next_robbing if next_robbing else datetime.date.today()
+            else:
+                robbing_obj = Robbing(identifier=userid, next_robbing=next_robbing if next_robbing else datetime.date.today())
+                session.add(robbing_obj)
+            await session.commit()
 
     async def can_rob(self, userid):
         """
         Check if a user can rob.
         If the user does not exist in the robbing table, insert a new record.
-
-        :param userid: The ID of the user.
-        :return: A tuple (can_rob, next_robbing_date).
         """
-        if await self.user_exists_in_table('robbing', userid):
-            query = "SELECT next_robbing FROM robbing WHERE identifier = %s"
-            result = await self.execute_query(query, (userid,))
-            if result:
-                next_robbing_date = result[0][0]
-                return not (datetime.date.today() < next_robbing_date), next_robbing_date
-            logging.error("The Check Rob made an Error")
-            return False, None
-        await self.insert_robbing(userid)
-        return True, None
+        async with self.async_session() as session:
+            robbing_obj = await session.get(Robbing, userid)
+            if robbing_obj:
+                next_robbing_date = robbing_obj.next_robbing
+                can_rob = not (datetime.date.today() < next_robbing_date)
+                return can_rob, next_robbing_date
+            await self.insert_robbing(userid)
+            return True, None
