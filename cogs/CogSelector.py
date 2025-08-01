@@ -66,7 +66,7 @@ class CogSelector(commands.Cog):
             await self.bot.db.save_cog((cog_name, enabled))  # Pass as tuple
             self.logger.info("Database updated for cog: %s", cog_name)
         except Exception as e:
-            self.logger.error(f"Failed to update database for cog %s: %s", cog_name, e)
+            self.logger.error("Failed to update database for cog %s: %s", cog_name, e)
 
     @commands.hybrid_command(name="coglist", description="Zeige den Status aller Cogs")
     @commands.is_owner()

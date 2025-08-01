@@ -1,5 +1,4 @@
 import os
-from logging.config import fileConfig
 
 from Database.db_tables import Base
 
