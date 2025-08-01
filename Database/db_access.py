@@ -3,15 +3,13 @@ Database access module using SQLAlchemy ORM for asynchronous PostgreSQL operatio
 
 This module provides a DbController class to manage database connections and execute queries using db_tables definitions.
 """
-import collections
 import os
 import datetime
 import logging
 import urllib.parse
-from discord.ext import commands
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update
 from alembic.config import Config
 from alembic import command
 
@@ -35,7 +33,6 @@ class DbController:
             self.logger.info("Starting database migrations...")
 
             import asyncio
-            import logging
             import sys
             from io import StringIO
 
@@ -117,7 +114,7 @@ class DbController:
             self.logger.info("Database migrations completed successfully")
 
         except Exception as e:
-            self.logger.error(f"Migration failed: {e}")
+            self.logger.error("Migration failed: %s", e)
             raise
 
     async def init_pool(self):
@@ -140,7 +137,7 @@ class DbController:
             )
             self.logger.info("Database engine initialized successfully")
         except Exception as e:
-            self.logger.error(f"Failed to initialize database engine: {e}")
+            self.logger.error("Failed to initialize database engine: %s", e)
             raise
 
     async def load_cogs_state(self):
@@ -164,7 +161,7 @@ class DbController:
             else:
                 session.add(Cogs(name=cog_name, enabled=int(enabled)))
             await session.commit()
-            self.logger.info(f"Cog '{cog_name}' state saved successfully")
+            self.logger.info("Cog '%s' state saved successfully", cog_name)
 
     async def close_pool(self):
         """

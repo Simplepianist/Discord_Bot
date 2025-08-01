@@ -26,7 +26,7 @@ class CogSelector(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.logger = logging.getLogger('Cog-System')
-        self.logger.info(f"CogSelector loaded with {len(get_cog_choices())} cogs.")
+        self.logger.info("CogSelector loaded with %s cogs.", len(get_cog_choices()))
         # Initialisierung wird asynchron nach Bot-Start durchgeführt
         asyncio.create_task(self.initialize_cogs_from_db())
 
@@ -44,11 +44,11 @@ class CogSelector(commands.Cog):
                     if ext_name not in self.bot.extensions:
                         try:
                             await self.bot.load_extension(ext_name)
-                            logger.info(f"Cog '{cog_name}' automatisch geladen (Datenbank-Status).")
+                            logger.info("Cog '%s' automatisch geladen (Datenbank-Status).", cog_name)
                         except Exception as e:
-                            logger.error(f"Fehler beim automatischen Laden von Cog '{cog_name}': {e}")
+                            logger.error("Fehler beim automatischen Laden von Cog '%s': %s", cog_name, e)
         except Exception as e:
-            logger.error(f"Fehler beim Initialisieren der Cogs aus der Datenbank: {e}")
+            logger.error("Fehler beim Initialisieren der Cogs aus der Datenbank: %s", e)
 
     def get_cog_status(self):
         """Returns dict with cog names and their status (loaded/unloaded)"""
@@ -64,9 +64,9 @@ class CogSelector(commands.Cog):
         """Update cog state in database - runs in background"""
         try:
             await self.bot.db.save_cog((cog_name, enabled))  # Pass as tuple
-            self.logger.info(f"Database updated for cog: {cog_name}")
+            self.logger.info("Database updated for cog: %s", cog_name)
         except Exception as e:
-            self.logger.error(f"Failed to update database for cog {cog_name}: {e}")
+            self.logger.error(f"Failed to update database for cog %s: %s", cog_name, e)
 
     @commands.hybrid_command(name="coglist", description="Zeige den Status aller Cogs")
     @commands.is_owner()
@@ -132,7 +132,7 @@ class CogSelector(commands.Cog):
                 results.append(f"⚠️ `{c}` ist bereits geladen")
             except Exception as e:
                 results.append(f"❌ Fehler bei `{c}`: {e}")
-        await self.start_sync_commands()
+        await self.start_sync_commands(ctx)
 
 
 
@@ -193,7 +193,7 @@ class CogSelector(commands.Cog):
                 results.append(f"⚠️ `{c}` ist bereits entladen")
             except Exception as e:
                 results.append(f"❌ Fehler bei `{c}`: {e}")
-        await self.start_sync_commands()
+        await self.start_sync_commands(ctx)
 
 
 
@@ -239,7 +239,7 @@ class CogSelector(commands.Cog):
                 results.append(f"⚠️ `{c}` ist nicht geladen - kann nicht neu geladen werden")
             except Exception as e:
                 results.append(f"❌ Fehler bei `{c}`: {e}")
-        await self.start_sync_commands()
+        await self.start_sync_commands(ctx)
 
 
 async def setup(bot):

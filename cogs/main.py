@@ -1,4 +1,4 @@
-from discord import Interaction, Member, app_commands
+from discord import Interaction
 from discord.ext import commands
 from discord.ext.commands import Context
 

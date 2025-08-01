@@ -14,7 +14,8 @@ class Utility:
         self.bot: discord.ext.commands.Bot = bot
 
     #region Utility
-    async def load_config(self, name):
+    @staticmethod
+    async def load_config(name):
         with open("jsons/config.json") as f:
             json_file = json.load(f)
         try:
@@ -41,7 +42,8 @@ class Utility:
                          icon_url=user.avatar)
         return embed
 
-    def return_author(self, ctx: Context | Interaction):
+    @staticmethod
+    def return_author(ctx: Context | Interaction):
         if isinstance(ctx, Interaction):
             return ctx.user
         return ctx.author
@@ -92,8 +94,8 @@ class Utility:
                 has_enough = False
         return [playable, has_enough]
 
-
-    def get_first_card(self, cards) -> int:
+    @staticmethod
+    def get_first_card(cards) -> int:
         firstworth = 0
         card = cards[0]
         kind = card[0]

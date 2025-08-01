@@ -77,7 +77,7 @@ class SimpleBot(Bot):
             await owner.send(message)
         except Exception as e:
             await self.send_ntfy(f"Konnte Owner nicht per DM benachrichtigen: {e}")
-            self.logging.warning(f"Konnte Owner nicht per DM benachrichtigen: {e}")
+            self.logging.warning("Konnte Owner nicht per DM benachrichtigen: %s", e)
 
         await self.send_ntfy(message)
 
@@ -92,7 +92,7 @@ class SimpleBot(Bot):
                 try:
                     await session.post(ntfy_url, data=message.encode("utf-8"))
                 except Exception as e:
-                    self.logging.warning(f"Konnte ntfy nicht benachrichtigen: {e}")
+                    self.logging.warning("Konnte ntfy nicht benachrichtigen: %s", e)
 
     async def on_ready(self):
         """
@@ -137,7 +137,7 @@ class SimpleBot(Bot):
         korrekt registriert sind und verfügbar sind.
         """
         for guild in self.guilds:
-            self.logging.info(f"Synchronisiere Befehle für Guild: {guild.name} (ID: {guild.id})")
+            self.logging.info("Synchronisiere Befehle für Guild: %s (ID: %s)", guild.name, guild.id)
             await self.tree.sync(guild=guild)
         self.logging.info("Befehle erfolgreich synchronisiert.")
 
@@ -147,7 +147,7 @@ class SimpleBot(Bot):
         elif isinstance(error, MissingRequiredArgument):
             missing = getattr(error, 'param', None)
             if missing:
-                await ctx.send(f"Es fehlt ein benötigtes Argument. Bitte gib alle erforderlichen Argumente an.", delete_after=8)
+                await ctx.send("Es fehlt ein benötigtes Argument. Bitte gib alle erforderlichen Argumente an.", delete_after=8)
             else:
                 await ctx.send("Es fehlen erforderliche Argumente. Bitte überprüfe die Befehlsbeschreibung.", delete_after=8)
         elif isinstance(error, (CheckFailure, NotOwner)):
