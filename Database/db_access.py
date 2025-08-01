@@ -183,16 +183,6 @@ class DbController:
             result = await session.execute(stmt)
             return result.scalars().all()
 
-    async def create_new_user(self, userid):
-        """
-        Create a new user with the given user ID.
-        """
-        async with self.async_session() as session:
-            user = User(identifier=userid, role="user")
-            session.add(user)
-            await session.commit()
-            return user
-
     async def get_money_for_user(self, userid):
         """
         Retrieve the amount of money for a given user ID.
@@ -241,33 +231,22 @@ class DbController:
             await session.commit()
             return True
 
-    async def set_streak(self, userid, streak):
+    async def update_streak_and_get_bonus(self, userid: int):
         """
-        Set the streak for a given user ID.
-        If the streak is less than or equal to 61, update the streak, otherwise reset it.
-        """
-        async with self.async_session() as session:
-            daily_obj = await session.get(Daily, userid)
-            if daily_obj and daily_obj.last_daily + datetime.timedelta(days=1) == datetime.date.today():
-                if streak <= 61:
-                    daily_obj.streak = streak
-                    await session.commit()
-            else:
-                if daily_obj:
-                    daily_obj.streak = 0
-                    await session.commit()
-
-    async def get_streak_bonus(self, userid: int):
-        """
-        Retrieve the streak bonus for a given user ID. Update the streak accordingly.
+        Aktualisiert die Streak eines Users und berechnet den Bonus.
+        Setzt die Streak zurück, falls der User nicht gestern aktiv war.
         """
         async with self.async_session() as session:
             daily_obj = await session.get(Daily, userid)
             streak = 0
-            if daily_obj and daily_obj.last_daily + datetime.timedelta(days=1) == datetime.date.today():
-                streak = daily_obj.streak + 1
+            if daily_obj:
+                if daily_obj.last_daily + datetime.timedelta(days=1) == datetime.date.today():
+                    streak = min(daily_obj.streak + 1, 61)
+                    daily_obj.streak = streak
+                else:
+                    daily_obj.streak = 0
+                await session.commit()
             bonus = min(streak * 5, 300)
-            await self.set_streak(userid, streak)
             return bonus
 
     async def set_daily(self, userid):
@@ -279,17 +258,10 @@ class DbController:
             if daily_obj:
                 daily_obj.last_daily = datetime.date.today()
                 await session.commit()
-
-    async def user_exists_in_table(self, table, userid):
-        """
-        Check if a user exists in a given table.
-        """
-        async with self.async_session() as session:
-            model = {"users": User, "money": Money, "daily": Daily, "robbing": Robbing, "cogs": Cogs}.get(table)
-            if not model:
-                return False
-            obj = await session.get(model, userid)
-            return obj is not None
+            else:
+                daily_obj = Daily(identifier=userid, last_daily=datetime.date.today(), streak=0)
+                session.add(daily_obj)
+                await session.commit()
 
     async def set_robbing_timeout(self, userid, auszeit):
         """
@@ -315,8 +287,11 @@ class DbController:
         async with self.async_session() as session:
             robbing_obj = await session.get(Robbing, userid)
             if robbing_obj:
-                robbing_obj.next_robbing = next_robbing
-                await session.commit()
+                robbing_obj.next_robbing = next_robbing if next_robbing else datetime.date.today()
+            else:
+                robbing_obj = Robbing(identifier=userid, next_robbing=next_robbing if next_robbing else datetime.date.today())
+                session.add(robbing_obj)
+            await session.commit()
 
     async def can_rob(self, userid):
         """

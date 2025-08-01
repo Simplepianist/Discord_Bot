@@ -79,7 +79,7 @@ class Utility:
         playable = True
         has_enough = True
         is_int = True
-        user_money = await self.bot.db.get_money_for_user(self.return_author(ctx))
+        user_money = await self.bot.db.get_money_for_user(self.return_author(ctx).id)
         try:
             bet = int(bet)
         except ValueError:

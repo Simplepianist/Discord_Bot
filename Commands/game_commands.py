@@ -87,19 +87,18 @@ class GamingCommands:
         embed.set_thumbnail(url=loaded_config["embeds_thumbnail"])
         embed.set_footer(text="Asked by " + self.utils.return_author(ctx).name,
                          icon_url=self.utils.return_author(ctx).avatar)
-
         for i, score in enumerate(scorelist):
-            user = (self.bot.get_user(int(score[0]))
-                    or await self.bot.fetch_user(int(score[0])))
+            user = (self.bot.get_user(int(score.identifier))
+                    or await self.bot.fetch_user(int(score.identifier)))
             username = user.name if int(user.discriminator) == 0 \
                 else f"{user.name}#{user.discriminator}"
             if i + 1 in [1, 2, 3]:
                 emojis = ["first_place", "second_place", "third_place"]
                 embed.add_field(name=f":{emojis[i]}: {username}",
-                                value=f"{score[1]} :coin:", inline=False)
+                                value=f"{score.money} :coin:", inline=False)
             else:
                 embed.add_field(name=f"{i + 1}. {username}",
-                                value=f"{score[1]} :coin:", inline=False)
+                                value=f"{score.money} :coin:", inline=False)
             if i == 9:
                 break
         await ctx.send(embed=embed)
@@ -109,7 +108,7 @@ class GamingCommands:
         author = self.utils.return_author(ctx)
         if await self.utils.get_daily(author):
             money_user = int(await self.utils.get_money_for_user(author)) + 300
-            bonus = await self.bot.db.get_streak_bonus(author.id)
+            bonus = await self.bot.db.update_streak_and_get_bonus(author.id)
             money_user += bonus
             await self.bot.db.set_money_for_user(author.id, money_user)
             await ctx.send(

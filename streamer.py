@@ -60,11 +60,39 @@ class SimpleBot(Bot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.currentlyGaming = []
-        self.owner: discord.User = self.get_user(self.owner_id)
         self.shutdown_initiated = False
         self.logging = logging.getLogger('SimpleBot')
         self.db = DbController()
         self.config = load_config()
+
+    async def notify_owner(self, message: str):
+        """
+        Sendet dem Bot-Owner eine DM mit einer Nachricht und versucht zusätzlich eine ntfy-Benachrichtigung zu senden.
+        """
+        # Discord DM
+        owner = await self.fetch_user(self.owner_id)
+        try:
+            if not owner.dm_channel:
+                await owner.create_dm()
+            await owner.send(message)
+        except Exception as e:
+            await self.send_ntfy(f"Konnte Owner nicht per DM benachrichtigen: {e}")
+            self.logging.warning(f"Konnte Owner nicht per DM benachrichtigen: {e}")
+
+        await self.send_ntfy(message)
+
+    async def send_ntfy(self, message: str):
+        """
+        Sendet eine Nachricht an den ntfy-Dienst, wenn die URL in den Umgebungsvariablen gesetzt ist.
+        """
+        import aiohttp
+        ntfy_url = os.getenv("NTFY_URL")
+        if ntfy_url:
+            async with aiohttp.ClientSession() as session:
+                try:
+                    await session.post(ntfy_url, data=message.encode("utf-8"))
+                except Exception as e:
+                    self.logging.warning(f"Konnte ntfy nicht benachrichtigen: {e}")
 
     async def on_ready(self):
         """
@@ -80,52 +108,63 @@ class SimpleBot(Bot):
         - Setzt den Besitzer des Bots.
         - Ändert die Präsenz des Bots zu einem Streaming-Status mit einem bestimmten Namen und URL.
         """
-        # Test logger immediately
-        self.logging.info("on_ready() method started")
-
-
 
         await self.change_presence(status=Status.offline, activity=discord.Game(name="Starte..."))
 
         # Run migrations and initialize database
-        await self.db.run_migrations()
-        await self.db.init_pool()
-        cog_states = await self.db.load_cogs_state()
+        try:
+            await self.db.run_migrations()
+            await self.db.init_pool()
+        except Exception as e:
+            await self.notify_owner(f"❗️ DB-Fehler beim Start: {e}")
+            raise
 
-        await self.add_cog(CogSelector(self, cog_states))
+        cogselector = CogSelector(self)
+        await self.add_cog(cogselector)
+        await cogselector.initialize_cogs_from_db()
         self.logging.info("CogSelector added successfully")
+
+        await self.sync_commmands()
+        self.logging.info("Sync gestartet (1h)")
 
         await self.change_presence(activity=Streaming(name=".help", url=self.config["streamURL"]))
 
-        await self.tree.sync()
-        self.logging.info("Sync gestartet (1h)")
 
+    async def sync_commmands(self):
+        """
+        Synchronisiert die Befehle des Bots mit Discord.
+        Diese Funktion wird aufgerufen, um sicherzustellen, dass alle Befehle
+        korrekt registriert sind und verfügbar sind.
+        """
+        for guild in self.guilds:
+            self.logging.info(f"Synchronisiere Befehle für Guild: {guild.name} (ID: {guild.id})")
+            await self.tree.sync(guild=guild)
+        self.logging.info("Befehle erfolgreich synchronisiert.")
 
     async def on_command_error(self, ctx: Context, error):
         if isinstance(error, BadArgument):
-            await ctx.send("Falsche Angabe von Argumenten", delete_after=5)
+            await ctx.send("Du hast ein ungültiges Argument eingegeben. Bitte überprüfe deine Eingabe und versuche es erneut.", delete_after=8)
         elif isinstance(error, MissingRequiredArgument):
-            await ctx.send("Fehlende Argumente", delete_after=5)
+            missing = getattr(error, 'param', None)
+            if missing:
+                await ctx.send(f"Es fehlt ein benötigtes Argument. Bitte gib alle erforderlichen Argumente an.", delete_after=8)
+            else:
+                await ctx.send("Es fehlen erforderliche Argumente. Bitte überprüfe die Befehlsbeschreibung.", delete_after=8)
         elif isinstance(error, (CheckFailure, NotOwner)):
-            await ctx.send("Du hast nicht die Berechtigung, diesen Befehl auszuführen",
-                           delete_after=5)
+            await ctx.send("Du hast nicht die Berechtigung, diesen Befehl auszuführen.", delete_after=5)
         elif isinstance(error, CommandInvokeError):
-            await ctx.send("Ein Fehler ist bei der Ausführung des Befehls aufgetreten",
-                           delete_after=5)
+            await ctx.send("Bei der Ausführung des Befehls ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut oder kontaktiere einen Admin.", delete_after=10)
         elif isinstance(error, CommandOnCooldown):
-            await ctx.send(f"Dieser Befehl ist auf Abklingzeit. "
-                           f"Versuche es in {error.retry_after:.2f} Sekunden erneut.",
-                           delete_after=5)
+            await ctx.send(f"Dieser Befehl ist auf Abklingzeit. Versuche es in {error.retry_after:.2f} Sekunden erneut.", delete_after=5)
         else:
             self.logging.error("Error: %s (caused by %s)", error, ctx.author.global_name)
-            raise error
-
+            await self.notify_owner(f"Error: {error} (caused by {ctx.author.global_name})")
 
 intents = discord.Intents.default()
 intents.all()
 intents.members = True
 intents.message_content = True
-simpleBot = SimpleBot(command_prefix=".", help_command=None, intents=intents, case_insensitive=True)
+simpleBot = SimpleBot(command_prefix=".", help_command=None, intents=intents, case_insensitive=True, owner_id=int(os.getenv("OWNER_ID", "325779745436467201")))
 
 try:
     simpleBot.run(os.environ["token"])

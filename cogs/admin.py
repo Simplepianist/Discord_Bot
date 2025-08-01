@@ -46,7 +46,7 @@ class AdminCog(commands.Cog):
         - Sendet eine Nachricht, dass die Befehle geladen wurden.
         """
         self.bot.logging.info("Sync triggered by %s", ctx.author.global_name)
-        await self.bot.tree.sync()
+        await self.bot.sync_commmands()
         await ctx.channel.send("Loaded Commands (May be seen in 1h)")
 
     @commands.hybrid_command(name="set")
@@ -68,6 +68,22 @@ class AdminCog(commands.Cog):
         - Ruft die Funktion `set_money_command` auf, um das Geld des Benutzers zu setzen.
         """
         await self.adminCommands.set_money_command(ctx, member, user_money)
+
+    @commands.hybrid_command(name="show_tree", description="Zeigt den Befehlsbaum des Bots an")
+    @commands.is_owner()
+    async def show_command_tree(self, ctx: Context | Interaction):
+        """
+        Diese Funktion wird aufgerufen, um den Befehlsbaum des Bots anzuzeigen.
+        Nur der Besitzer des Bots kann diesen Befehl ausführen.
+
+        Parameter:
+        - ctx (Context | Interaction): Der Kontext, in dem der Befehl ausgeführt wurde.
+
+        Aktionen:
+        - Ruft die Funktion `show_command_tree` auf, um den Befehlsbaum anzuzeigen.
+        """
+        commands_list = [cmd.name for cmd in self.bot.tree.get_commands()]
+        await ctx.send("Befehle im Tree:\n" + "\n".join(commands_list))
 
     @commands.hybrid_command(name="stop", aliases=["quit", "close"], description="Stoppt den Bot")
     @commands.is_owner()
