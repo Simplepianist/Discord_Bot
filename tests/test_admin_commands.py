@@ -1,7 +1,6 @@
 import sys
 import os
 import pytest_asyncio
-import logging
 from unittest.mock import AsyncMock, MagicMock
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pytest

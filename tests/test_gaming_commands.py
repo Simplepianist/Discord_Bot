@@ -5,7 +5,7 @@ import discord
 import discord.ext.test as dpytest
 from discord.ext.commands import CommandRegistrationError
 from simplebot import SimpleBot
-from unittest.mock import AsyncMock, MagicMock, create_autospec
+from unittest.mock import AsyncMock, MagicMock
 
 # Hilfsfunktion für Intents
 def getIntents():
@@ -110,8 +110,8 @@ async def test_daily_command_without_streak(bot):
     ctx = MagicMock()
     ctx.send = AsyncMock()
     await games.daily_command(ctx)
-    ctx.send.assert_awaited_with(f"Du hast 300 Coins erhalten.\n" +
-                               f"**Total: 400 Coins**")
+    ctx.send.assert_awaited_with("Du hast 300 Coins erhalten.\n" +
+                               "**Total: 400 Coins**")
     bot.db.set_money_for_user.assert_awaited()
     bot.db.set_daily.assert_awaited()
 
@@ -130,8 +130,8 @@ async def test_daily_command_with_streak(bot):
     ctx = MagicMock()
     ctx.send = AsyncMock()
     await games.daily_command(ctx)
-    ctx.send.assert_awaited_with(f"Du hast 315 Coins erhalten.\n" +
-                               f"**Total: 415 Coins**")
+    ctx.send.assert_awaited_with("Du hast 315 Coins erhalten.\n" +
+                               "**Total: 415 Coins**")
     bot.db.set_money_for_user.assert_awaited()
     bot.db.set_daily.assert_awaited()
 
