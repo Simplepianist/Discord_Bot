@@ -17,7 +17,7 @@ class AliasSelect(UniversalSelect):
         view (discord.ui.View): The view that this dropdown is part of.
     """
 
-    def __init__(self, user: Member, view):
+    def __init__(self, user: Member, view, bot):
         """
         Initializes the AliasSelect with predefined options and responses.
 
@@ -56,7 +56,7 @@ class AliasSelect(UniversalSelect):
                 [".quote", "Gibt ein Zufälliges Anime Zitat aus", True],
                 [".qotd", "Gibt das Zitat des Tages aus", True]
             ]}
-        super().__init__(user, options, response, view)
+        super().__init__(user, options, response, view, bot)
 
 
 class AliasSelectView(discord.ui.View):
@@ -68,7 +68,7 @@ class AliasSelectView(discord.ui.View):
         timeout (int): The timeout duration for the view.
     """
 
-    def __init__(self, user: Member, timeout=180):
+    def __init__(self, user: Member, bot, timeout=180):
         """
         Initializes the AliasSelectView with a timeout and adds the AliasSelect dropdown.
 
@@ -77,4 +77,4 @@ class AliasSelectView(discord.ui.View):
             timeout (int, optional): The timeout duration for the view. Defaults to 180 seconds.
         """
         super().__init__(timeout=timeout)
-        self.add_item(AliasSelect(user, self))
+        self.add_item(AliasSelect(user, self, bot))
