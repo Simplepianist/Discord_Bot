@@ -9,7 +9,7 @@ from discord.ext.commands import Context
 def get_cog_choices():
     return [
         app_commands.Choice(name=f[:-3], value=f[:-3])
-        for f in os.listdir("cogs")
+        for f in os.path.join(os.path.dirname(__file__), "cogs")
         if f.endswith(".py") and not f.startswith("__") and not f.startswith("CogSelector")
     ]
 
@@ -17,7 +17,7 @@ def get_cog_choices():
 def get_all_cog_names():
     return [
         f[:-3]
-        for f in os.listdir("cogs")
+        for f in os.path.join(os.path.dirname(__file__), "cogs")
         if f.endswith(".py") and not f.startswith("__") and not f.startswith("CogSelector")
     ]
 
