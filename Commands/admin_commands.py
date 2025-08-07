@@ -107,17 +107,19 @@ class AdminCommands:
         Returns:
         None
         """
-        user = member.name
-        if int(member.discriminator) != 0:
+        user = member.name if member else None
+        if member and int(member.discriminator) != 0:
             user = user + "#" + str(member.discriminator)
+        if member is None:
+            await ctx.send("Kein Spieler angegeben", ephemeral=True, delete_after=5)
+            return
+        if user_money is None:
+            await ctx.send("Betrag muss angegeben sein", ephemeral=True, delete_after=5)
+            return
         try:
             user_money = int(user_money)
-            if user_money is None:
-                await ctx.send("Betrag muss angegeben sein", ephemeral=True, delete_after=5)
-            elif user_money < 0:
+            if user_money < 0:
                 await ctx.send("Betrag muss positiv sein", ephemeral=True, delete_after=5)
-            elif member is None:
-                await ctx.send("Kein Spieler angegeben", ephemeral=True, delete_after=5)
             else:
                 await self.bot.db.set_money_for_user(member.id, user_money)
                 embed = Embed(
