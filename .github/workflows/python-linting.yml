@@ -38,11 +38,10 @@ jobs:
         run: |
           pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term --junitxml=pytest-report.xml
 
-      - name: Roprt result to DeepSource
+      - name: Report result to DeepSource
         run: |
           curl https://deepsource.io/cli | sh
-          ./bin/deepsource analyze --analyzer test-coverage --key python --value-file ./path/to/report
-
+          ./bin/deepsource report --analyzer test-coverage --key python --value-file coverage.xml
         env:
           DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
 
