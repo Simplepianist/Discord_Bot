@@ -45,7 +45,7 @@ jobs:
       # It uses the `tags` and `labels` parameters to tag and label the image with the output from the "meta" step.
       - name: Build and push Docker image
         id: push
-        uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991
+        uses: docker/build-push-action@ccc2b40e9ea6518f9252a22a990f8e868370f62e
         with:
           context: .
           push: true
