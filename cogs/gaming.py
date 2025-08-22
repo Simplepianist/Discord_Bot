@@ -104,7 +104,7 @@ class GamingCog(commands.Cog):
         """
         await self.games.execute_gaming_with_timeout(ctx, self.games.blackjack_command, bet)
 
-    @commands.hybrid_command(name="roulette", description="Spiel ein bisschen Roulette")
+    @commands.hybrid_command(name="roulette", description="Spiel ein bisschen Roulette", aliases=["rl"])
     @app_commands.describe(bet="Wieviel du setzen möchtest")
     @app_commands.rename(bet="einsatz")
     @app_commands.describe(entry="Auf was wettest du")
@@ -123,7 +123,7 @@ class GamingCog(commands.Cog):
         """
         await self.games.execute_gaming_with_timeout(ctx, self.games.roulette_command, bet, entry)
 
-    @commands.hybrid_command(name="higherlower", description="Spiel ein bisschen Higher/Lower")
+    @commands.hybrid_command(name="higherlower", description="Spiel ein bisschen Higher/Lower", aliases=["hl"])
     @app_commands.describe(bet="Wieviel du setzen möchtest")
     @app_commands.rename(bet="einsatz")
     async def higher_lower_slash(self, ctx: Context | Interaction, bet: int):

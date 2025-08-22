@@ -48,7 +48,7 @@ class HelpSelect(UniversalSelect):
                 [".money (user)", "Zeigt dein Aktuelles Guthaben (oder eines Users)", True],
                 [".send <user> <money>", "Sendet den Betrag an den Ausgewählten User", True],
                 [".blackjack <einsatz>", "Startet ein Blackjack Spiel mit gegeben Einsatz", True],
-                [".higherlow <einsatz>", "Startet ein Higher-Lower Game von 1 bis 100", True],
+                [".higherlower <einsatz>", "Startet ein Higher-Lower Game von 1 bis 100", True],
                 [".roulette <einsatz> <wettstein>",
                  "Startet ein Roulette Spiel mit gegeben Einsatz auf den gesetzten Wert", True],
                 [".rob (player)", "Raube die Bank aus (oder einen User)", True]
