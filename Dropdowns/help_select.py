@@ -16,7 +16,7 @@ class HelpSelect(UniversalSelect):
         view (discord.ui.View): Die Ansicht, die das Dropdown-Menü enthält.
     """
 
-    def __init__(self, user: Member, view):
+    def __init__(self, user: Member, view, bot):
         """
         Initialisiert die HelpSelect-Klasse mit den gegebenen Optionen und Antworten.
 
@@ -48,7 +48,7 @@ class HelpSelect(UniversalSelect):
                 [".money (user)", "Zeigt dein Aktuelles Guthaben (oder eines Users)", True],
                 [".send <user> <money>", "Sendet den Betrag an den Ausgewählten User", True],
                 [".blackjack <einsatz>", "Startet ein Blackjack Spiel mit gegeben Einsatz", True],
-                [".higherlow <einsatz>", "Startet ein Higher-Lower Game von 1 bis 100", True],
+                [".higherlower <einsatz>", "Startet ein Higher-Lower Game von 1 bis 100", True],
                 [".roulette <einsatz> <wettstein>",
                  "Startet ein Roulette Spiel mit gegeben Einsatz auf den gesetzten Wert", True],
                 [".rob (player)", "Raube die Bank aus (oder einen User)", True]
@@ -57,7 +57,7 @@ class HelpSelect(UniversalSelect):
                 [".quote", "Gibt ein Zufälliges Anime Zitat aus", True],
                 [".qotd", "Gibt das Zitat des Tages aus", True]
             ]}
-        super().__init__(user, options, response, view)
+        super().__init__(user, options, response, view, bot)
 
 class HelpSelectView(discord.ui.View):
     """
@@ -68,7 +68,7 @@ class HelpSelectView(discord.ui.View):
         timeout (int): Die Zeit in Sekunden, nach der die Ansicht abläuft.
     """
 
-    def __init__(self, user: Member, timeout=180):
+    def __init__(self, user: Member, bot, timeout=180):
         """
         Initialisiert die HelpSelectView-Klasse mit dem gegebenen Benutzer und Timeout.
 
@@ -78,4 +78,4 @@ class HelpSelectView(discord.ui.View):
             nach der die Ansicht abläuft. Standard ist 180 Sekunden.
         """
         super().__init__(timeout=timeout)
-        self.add_item(HelpSelect(user, self))
+        self.add_item(HelpSelect(user, self, bot))

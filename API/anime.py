@@ -15,7 +15,7 @@ def daily_anime_quote():
     """
     url = "https://waifu.it/api/v4/quote"
     waifuitheader = {
-        "Authorization": os.environ["waifuit"],
+        "Authorization": os.getenv("waifuit"),
     }
     response = requests.get(url, headers=waifuitheader, timeout=5)
     return response.json()

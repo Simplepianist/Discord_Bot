@@ -1,0 +1,1 @@
+dotenv -e .\.env alembic revision --autogenerate -m %1
