@@ -1,4 +1,4 @@
-discord.py==2.4.0
+discord.py==2.6.2
 aiomysql==0.2.0
 requests==2.32.4
 urllib3==2.5.0
