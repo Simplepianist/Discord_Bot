@@ -5,15 +5,16 @@ die Funktionen zum Ausrauben von Spielern und Banken in einem Discord-Bot implem
 import random
 import discord
 from discord.ext.commands import Context
-from Util.variables import currentlyGaming
-from Util.util_commands import send_message, return_author, get_money_for_user, db
+from Util.util_commands import Utility
 
 
 class Rob:
     """
     Eine Klasse, die das Ausrauben von Spielern und Banken in einem Discord-Bot implementiert.
     """
-    def __init__(self):
+    def __init__(self, bot):
+        self.bot = bot
+        self.utils = Utility(bot)
         self.bank_caught = [
             "Dir ist deine Pistole aus der Hand gefallen als du sie zücken wolltest.\n"
             "Man hat sie dir abgenommen und die Polizei gerufen.\n"
@@ -59,9 +60,9 @@ class Rob:
             ctx (discord.Interaction | Context): The context of the command.
         """
         # TODO UPDATE: implement Gun-Item from Shop
-        author = return_author(ctx)
-        user_money = await get_money_for_user(author)
-        currentlyGaming.append(str(author.id))
+        author = self.utils.return_author(ctx)
+        user_money = await self.utils.get_money_for_user(author)
+        self.bot.currentlyGaming.append(str(author.id))
         if player is not None:
             auszeit = 2
             await self.rob_player(player, ctx, author, user_money)
@@ -70,12 +71,11 @@ class Rob:
             auszeit = 5
             await self.rob_bank(ctx, author, user_money)
 
-        currentlyGaming.remove(str(author.id))
-        currentlyGaming.remove(str(player.id))
+        self.bot.currentlyGaming.remove(str(author.id))
+        self.bot.currentlyGaming.remove(str(player.id))
         await self.set_robbing_stop(auszeit, author.id)
 
-    @staticmethod
-    async def rob_player(player: discord.Member, ctx: discord.Interaction | Context,
+    async def rob_player(self, player: discord.Member, ctx: discord.Interaction | Context,
                      user, user_money):
         """
         Attempts to rob another player.
@@ -90,24 +90,22 @@ class Rob:
             None
         """
         if player.bot:
-            await send_message(ctx, msg="Please stop pinging the Bots!!", delete_after=10)
+            await ctx.send("Please stop pinging the Bots!!", delete_after=10)
             return
 
-        if str(player.id) in currentlyGaming:
-            await send_message(ctx, "Der User ist beschäftigt, bitte warten.", delete_after=10)
+        if str(player.id) in self.bot.currentlyGaming:
+            await ctx.send("Der User ist beschäftigt, bitte warten.", delete_after=10)
             return
 
-        currentlyGaming.append(str(player.id))
-        robbing_money = await db.get_money_for_user(player.id)
+        self.bot.currentlyGaming.append(str(player.id))
+        robbing_money = await self.bot.db.get_money_for_user(player.id)
 
         if user_money < 250:
-            await send_message(msg="Du hast nichtmal Geld für die Mindeststrafe. "
-                                   "Vergiss es lieber", ctx=ctx)
+            await ctx.send("Du hast nichtmal Geld für die Mindeststrafe. Vergiss es lieber")
             return
 
         if robbing_money < 500:
-            await send_message(msg="Du willst jemanden mit 500 :coin: oder weniger berauben.\n"
-                                   "Was bist du für ein Monster", ctx=ctx)
+            await ctx.send("Du willst jemanden mit 500 :coin: oder weniger berauben.\nWas bist du für ein Monster")
             return
 
         worth = max(250, int(robbing_money * 0.05))
@@ -115,22 +113,21 @@ class Rob:
 
         chance = random.randint(0, 10)
         if chance < 3:
-            await send_message(msg="Du hast " + player.mention + f" um {worth} :coin: beraubt. \n"
+            await ctx.send("Du hast " + player.mention + f" um {worth} :coin: beraubt. \n"
                                  f"\nDu beschließt für ein paar Tage niemanden mehr zu berauben. "
-                                 f"Aber vielleicht ja in 2 Tagen wieder.", ctx=ctx)
+                                 f"Aber vielleicht ja in 2 Tagen wieder.")
             new_money = user_money + worth
             new_robbing_money = robbing_money - worth
-            await db.set_money_for_user(player.id, new_robbing_money)
+            await self.bot.db.set_money_for_user(player.id, new_robbing_money)
         else:
             penalty = int(user_money * 0.1)
             penalty = min(penalty, 4000)
-            await send_message(msg="Du wurdest erwischt und musst nun " + str(penalty) + " :coin: "
+            await ctx.send("Du wurdest erwischt und musst nun " + str(penalty) + " :coin: "
                                  "als Strafe zahlen. \n\nDu beschließt für ein paar Tage "
-                                 "niemanden mehr zu berauben. Aber vielleicht ja in 2 Tagen wieder."
-                               , ctx=ctx)
+                                 "niemanden mehr zu berauben. Aber vielleicht ja in 2 Tagen wieder.")
             new_money = user_money - penalty
 
-        await db.set_money_for_user(user.id, new_money)
+        await self.bot.db.set_money_for_user(user.id, new_money)
 
     async def rob_bank(self, ctx: discord.Interaction | Context, user, user_money):
         """
@@ -145,25 +142,24 @@ class Rob:
             None
         """
         if user_money < 300:
-            await send_message(ctx, "Nopes. Du musst 300 :coin: oder mehr haben.",
+            await ctx.send("Nopes. Du musst 300 :coin: oder mehr haben.",
                                delete_after=5)
             return
 
         chance = random.randint(0, 10)
         if chance < 2:
-            await send_message(ctx, "Du hast die Bank erfolgreich ausgeraubt. "
+            await ctx.send("Du hast die Bank erfolgreich ausgeraubt. "
                                     "Die hast 7000 :coin: erhalten. Musst aber für 5 Tage "
                                     "untertauchen\n(Darfst niemanden ausrauben)")
-            await db.set_money_for_user(user.id, user_money + 7000)
+            await self.bot.db.set_money_for_user(user.id, user_money + 7000)
         else:
             penalty = max(300, int(user_money * 0.075))
             penalty = min(penalty, 5000)
             reason: str = random.choice(self.bank_caught)
             new_money = user_money - penalty
-            await db.set_money_for_user(user.id, new_money)
-            await send_message(ctx, reason.replace("{money}", str(penalty)) +
+            await self.bot.db.set_money_for_user(user.id, new_money)
+            await ctx.send(reason.replace("{money}", str(penalty)) +
                                "\nDu musst für 5 Tage untertauchen (Darfst niemanden ausrauben)")
 
-    @staticmethod
-    async def set_robbing_stop(auszeit: int, userid):
-        await db.set_robbing_timeout(userid, auszeit)
+    async def set_robbing_stop(self, auszeit: int, userid):
+        await self.bot.db.set_robbing_timeout(userid, auszeit)

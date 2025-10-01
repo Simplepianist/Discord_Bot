@@ -14,68 +14,76 @@ from discord.ext.commands import Context
 from Dropdowns.alias_select import AliasSelectView
 from Dropdowns.help_select import HelpSelectView
 from Dropdowns.rules_select import RuleSelectView
-from Util.util_commands import send_message, return_author
-from Util.variables import inviteLink, streamURL
+from Util.util_commands import Utility
 
 
-async def help_command(ctx: Context | Interaction):
+class MainCommands:
     """
-    Sends a help message with a dropdown to select a category.
-
-    Args:
-        ctx (Context | Interaction): The context or interaction that triggered the command.
+    A class to handle main commands for the Discord bot.
     """
-    await send_message(ctx, "Wähle eine Category",
-                       view=HelpSelectView(return_author(ctx)))
 
+    def __init__(self, bot):
+        self.bot = bot
+        self.utils = Utility(bot)
 
-async def rules_command(ctx: Context | Interaction):
-    """
-    Sends a message with a dropdown to select the game rules.
-
-    Args:
-        ctx (Context | Interaction): The context or interaction that triggered the command.
-    """
-    await send_message(ctx, "Wähle das Spiel dessen Regeln du erfahren möchtest",
-                       view=RuleSelectView(return_author(ctx)))
-
-
-async def alias_command(ctx: Context | Interaction):
-    """
-    Sends a message with a dropdown to select an alias category.
-
-    Args:
-        ctx (Context | Interaction): The context or interaction that triggered the command.
-    """
-    await send_message(ctx, "Wähle eine Category",
-                       view=AliasSelectView(return_author(ctx)))
-
-
-async def ping_command(ctx: Context | Interaction):
-    """
-    Sends a pong message mentioning the author.
-
-    Args:
-        ctx (Context | Interaction): The context or interaction that triggered the command.
-    """
-    await send_message(ctx, "PONG!!! " + return_author(ctx).mention)
-
-
-async def invite_command(ctx: Context | Interaction):
-    """
-    Sends an invite link.
-
-    Args:
-        ctx (Context | Interaction): The context or interaction that triggered the command.
-    """
-    await send_message(ctx, inviteLink)
-
-
-async def stream_command(ctx: Context | Interaction):
-    """
-    Sends a stream URL.
-
-    Args:
-        ctx (Context | Interaction): The context or interaction that triggered the command.
-    """
-    await send_message(ctx, streamURL)
+    async def help_command(self, ctx: Context | Interaction):
+        """
+        Sends a help message with a dropdown to select a category.
+    
+        Args:
+            ctx (Context | Interaction): The context or interaction that triggered the command.
+        """
+        await ctx.send("Wähle eine Category",
+                           view=HelpSelectView(self.utils.return_author(ctx), self.bot))
+    
+    
+    async def rules_command(self, ctx: Context | Interaction):
+        """
+        Sends a message with a dropdown to select the game rules.
+    
+        Args:
+            ctx (Context | Interaction): The context or interaction that triggered the command.
+        """
+        await ctx.send("Wähle das Spiel dessen Regeln du erfahren möchtest",
+                           view=RuleSelectView(self.utils.return_author(ctx), self.bot))
+    
+    
+    async def alias_command(self, ctx: Context | Interaction):
+        """
+        Sends a message with a dropdown to select an alias category.
+    
+        Args:
+            ctx (Context | Interaction): The context or interaction that triggered the command.
+        """
+        await ctx.send("Wähle eine Category",
+                           view=AliasSelectView(self.utils.return_author(ctx), self.bot))
+    
+    
+    async def ping_command(self, ctx: Context | Interaction):
+        """
+        Sends a pong message mentioning the author.
+    
+        Args:
+            ctx (Context | Interaction): The context or interaction that triggered the command.
+        """
+        await ctx.send("PONG!!! " + self.utils.return_author(ctx).mention)
+    
+    
+    async def invite_command(self, ctx: Context | Interaction):
+        """
+        Sends an invite link.
+    
+        Args:
+            ctx (Context | Interaction): The context or interaction that triggered the command.
+        """
+        await ctx.send(self.bot.config["inviteLink"])
+    
+    
+    async def stream_command(self, ctx: Context | Interaction):
+        """
+        Sends a stream URL.
+    
+        Args:
+            ctx (Context | Interaction): The context or interaction that triggered the command.
+        """
+        await ctx.send(self.bot.config["streamURL"])

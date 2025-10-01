@@ -15,7 +15,7 @@ class RuleSelect(UniversalSelect):
             user (Member): Der Benutzer, der das Dropdown-Menü verwendet.
             view (discord.ui.View): Die Ansicht, die das Dropdown-Menü enthält.
         """
-    def __init__(self, user: Member, view):
+    def __init__(self, user: Member, view, bot):
         """
         Initialisiert die RuleSelect-Klasse mit den gegebenen Optionen und Antworten.
 
@@ -89,7 +89,7 @@ class RuleSelect(UniversalSelect):
                  "Hier ein [Link](https://as2.ftcdn.net/v2/jpg/04/59/44/91"
                  "/1000_F_459449191_hTDFAeYXqBZKojowM3KupyCxe2F2Y0m1.jpg)", False]]
         }
-        super().__init__(user, options, response, view)
+        super().__init__(user, options, response, view, bot)
 
 
 
@@ -102,7 +102,7 @@ class RuleSelectView(discord.ui.View):
             timeout (int): Die Zeit in Sekunden, nach der die Ansicht abläuft.
     """
 
-    def __init__(self, user: Member, timeout=180):
+    def __init__(self, user: Member, bot, timeout=180):
         """
         Initialisiert die RuleSelectView-Klasse mit dem gegebenen Benutzer und Timeout.
 
@@ -112,4 +112,4 @@ class RuleSelectView(discord.ui.View):
             nach der die Ansicht abläuft. Standard ist 180 Sekunden.
         """
         super().__init__(timeout=timeout)
-        self.add_item(RuleSelect(user, self))
+        self.add_item(RuleSelect(user, self, bot))

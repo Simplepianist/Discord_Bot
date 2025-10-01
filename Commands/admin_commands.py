@@ -17,123 +17,117 @@ Importierte Module:
 import logging
 from discord import Interaction, Streaming, Activity, ActivityType, Status, Member, Embed, Colour
 from discord.ext.commands import Context
-from Util.util_commands import db, check_admin, send_message, get_money_for_user, return_author
-from Util.variables import bot, streamURL
+
+from Util.util_commands import Utility
 
 
-#region General
-
-async def shutdown_command():
+class AdminCommands:
     """
-    Shuts down the bot and closes the database connection.
-
-    Returns:
-    None
+    A class to handle administrative commands for the Discord bot.
     """
-    await db.close_pool()
-    logging.info("Closed Connection (DB)")
-    await bot.close()
-    logging.info("Bot stopped")
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.utils = Utility(bot)
 
 
-async def reset_status_command(ctx: Context | Interaction):
-    """
-    Resets the bot's status to streaming with a predefined URL.
+    async def shutdown_command(self):
+        """
+        Shuts down the bot and closes the database connection.
 
-    Parameters:
-    ctx (Context | Interaction): The context or interaction that triggered the command.
-
-    Returns:
-    None
-    """
-    if check_admin(ctx):
-        await bot.change_presence(
-            activity=Streaming(name=".help", url=streamURL))
-    else:
-        await send_message(ctx, "Piss dich ", ephemeral=True, delete_after=5)
+        Returns:
+        None
+        """
+        #await db.close_pool()
+        logging.info("Closed Connection (DB)")
+        await self.bot.close()
+        logging.info("Bot stopped")
 
 
-async def set_status_command(ctx: Context | Interaction):
-    """
-    Sets the bot's status based on user input.
+    async def reset_status_command(self, ctx: Context | Interaction):
+        """
+        Resets the bot's status to streaming with a predefined URL.
 
-    Parameters:
-    ctx (Context | Interaction): The context or interaction that triggered the command.
+        Parameters:
+        ctx (Context | Interaction): The context or interaction that triggered the command.
 
-    Returns:
-    None
-    """
-    if not check_admin(ctx):
-        await send_message(ctx, "Piss dich ", ephemeral=True, delete_after=5)
-        return
-
-    await send_message(ctx, "Wie lautet der neue Status")
-    content = (await bot.wait_for('message')).content
-    if not content:
-        await send_message(ctx, "Ändern abgebrochen")
-        return
-
-    await send_message(ctx, "Wie soll der Status sein (dnd,online,offline,idle,streaming)")
-    status = (await bot.wait_for("message")).content.lower()
-    if status not in ["dnd", "online", "offline", "idle", "streaming"]:
-        await send_message(ctx, "Ändern abgebrochen")
-        return
-
-    if status == "streaming":
-        await bot.change_presence(activity=Streaming(name=content, url=streamURL))
-        return
-
-    await send_message(ctx, "Art des Status (listening,playing)")
-    art = (await bot.wait_for("message")).content.lower()
-    if art not in ["listening", "playing"]:
-        await send_message(ctx, "Ändern abgebrochen")
-        return
-
-    activity_type = ActivityType.listening if art == "listening" else ActivityType.playing
-    act = Activity(type=activity_type, name=content)
-    status_map = {
-        "dnd": Status.dnd,
-        "online": Status.online,
-        "offline": Status.offline,
-        "idle": Status.idle
-    }
-    await bot.change_presence(activity=act, status=status_map[status])
-
-#endregion
-
-#region Gaming
-async def set_money_command(ctx: Context | Interaction, member: Member, user_money=None):
-    """
-    Sets the money for a specified user.
-
-    Parameters:
-    ctx (Context | Interaction): The context or interaction that triggered the command.
-    member (discord.Member): The member whose money is to be set.
-    user_money (int, optional): The amount of money to set for the user. Defaults to None.
-
-    Returns:
-    None
-    """
-    user = member.name
-    if int(member.discriminator) != 0:
-        user = user + "#" + str(member.discriminator)
-    try:
-        user_money = int(user_money)
-        if user_money is None:
-            await send_message(ctx, "Betrag muss angegeben sein", ephemeral=True, delete_after=5)
-        elif user_money < 0:
-            await send_message(ctx, "Betrag muss positiv sein", ephemeral=True, delete_after=5)
-        elif member is None:
-            await send_message(ctx, "Kein Spieler angegeben", ephemeral=True, delete_after=5)
+        Returns:
+        None
+        """
+        if self.utils.check_admin(ctx):
+            await self.bot.change_presence(
+                activity=Streaming(name=".help", url=self.bot.config["streamURL"]))
         else:
-            await db.set_money_for_user(member.id, user_money)
-            embed = Embed(
-                title="Bank", colour=Colour(0xc6c910))
-            embed.add_field(
-                name=user,
-                value=f"Money: {await get_money_for_user(return_author(ctx))}", inline=False
-            )
-            await send_message(ctx, embed=embed)
-    except ValueError:
-        await send_message(ctx, "Falsche Parameter übergeben")
-#endregion
+            await ctx.send("Piss dich ", ephemeral=True, delete_after=5)
+
+
+    async def set_status_command(self, ctx, name: str, status: str, art: str = None):
+        """
+        Sets the bot's status based on user input.
+
+        Parameters:
+        ctx (Context | Interaction): The context or interaction that triggered the command.
+
+        Returns:
+        None
+        """
+        if not self.utils.check_admin(ctx):
+            await ctx.send("Keine Berechtigung", ephemeral=True, delete_after=5)
+            return
+
+        if status == "streaming":
+            await self.bot.change_presence(activity=Streaming(name=name, url=self.bot.config["streamURL"]))
+            await ctx.send("Status geändert zu Streaming")
+            return
+
+        if art not in ["listening", "playing"]:
+            await ctx.send("Art muss angegeben werden (listening/playing)")
+            return
+
+        activity_type = ActivityType.listening if art == "listening" else ActivityType.playing
+        act = Activity(type=activity_type, name=name)
+        status_map = {
+            "dnd": Status.dnd,
+            "online": Status.online,
+            "offline": Status.offline,
+            "idle": Status.idle
+        }
+        await self.bot.change_presence(activity=act, status=status_map[status])
+        await ctx.send(f"Status geändert zu {status} ({art})")
+
+    async def set_money_command(self, ctx: Context | Interaction, member: Member, user_money=None):
+        """
+        Sets the money for a specified user.
+
+        Parameters:
+        ctx (Context | Interaction): The context or interaction that triggered the command.
+        member (discord.Member): The member whose money is to be set.
+        user_money (int, optional): The amount of money to set for the user. Defaults to None.
+
+        Returns:
+        None
+        """
+        user = member.name if member else None
+        if member and int(member.discriminator) != 0:
+            user = user + "#" + str(member.discriminator)
+        if member is None:
+            await ctx.send("Kein Spieler angegeben", ephemeral=True, delete_after=5)
+            return
+        if user_money is None:
+            await ctx.send("Betrag muss angegeben sein", ephemeral=True, delete_after=5)
+            return
+        try:
+            user_money = int(user_money)
+            if user_money < 0:
+                await ctx.send("Betrag muss positiv sein", ephemeral=True, delete_after=5)
+            else:
+                await self.bot.db.set_money_for_user(member.id, user_money)
+                embed = Embed(
+                    title="Bank", colour=Colour(0xc6c910))
+                embed.add_field(
+                    name=user,
+                    value=f"Money: {await self.utils.get_money_for_user(self.utils.return_author(ctx))}", inline=False
+                )
+                await ctx.send(embed=embed)
+        except ValueError:
+            await ctx.send("Falsche Parameter übergeben")
