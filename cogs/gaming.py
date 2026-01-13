@@ -2,16 +2,20 @@ from discord import Interaction, Member, app_commands
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from Commands.game_commands import GamingCommands
 from Commands.main_commands import MainCommands
+from games import BlackjackGame, RouletteGame, HigherLowerGame, GameManager
 
 
 class GamingCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.games = GamingCommands(bot)
+        self.game_manager = GameManager(bot)
         self.mainCommands = MainCommands(bot)
         self.bot.logging.info("GamingCog loaded")
+
+    def _return_author(self, ctx: Context | Interaction) -> Member:
+        """Helper to get the command author."""
+        return ctx.user if isinstance(ctx, Interaction) else ctx.author
 
     @commands.hybrid_command(name="rule", aliases=["rules"], description="Hier findest du Regeln der Spiele")
     async def rules(self, ctx: Context | Interaction):
@@ -92,36 +96,50 @@ class GamingCog(commands.Cog):
     @app_commands.describe(bet="Wieviel du setzen möchtest")
     @app_commands.rename(bet="einsatz")
     async def blackjack_slash(self, ctx: Context | Interaction, bet: int):
-        """
-        Diese Funktion wird aufgerufen, um eine Runde Blackjack zu spielen.
+        """Play a game of blackjack (21)."""
+        author = self._return_author(ctx)
 
-        Parameter:
-        - ctx (Context | Interaction): Der Kontext, in dem der Befehl ausgeführt wurde.
-        - bet (int): Der Einsatzbetrag für das Spiel.
+        # Validate bet
+        is_valid, error_msg = await self.game_manager.validate_bet(ctx, bet)
+        if not is_valid:
+            await ctx.send(f"❌ {error_msg}", ephemeral=True, delete_after=5)
+            return
 
-        Aktionen:
-        - Ruft die Funktion `execute_gaming_with_timeout` auf, um eine Runde Blackjack zu spielen.
-        """
-        await self.games.execute_gaming_with_timeout(ctx, self.games.blackjack_command, bet)
+        # Create and execute game
+        game = BlackjackGame(author, bet)
+        await self.game_manager.execute_game(ctx, game, author)
 
-    @commands.hybrid_command(name="roulette", description="Spiel ein bisschen Roulette", aliases=["rl"])
-    @app_commands.describe(bet="Wieviel du setzen möchtest")
-    @app_commands.rename(bet="einsatz")
-    @app_commands.describe(entry="Auf was wettest du")
-    @app_commands.rename(entry="wettstein")
-    async def roulette_slash(self, ctx: Context | Interaction, bet: int, entry: str):
-        """
-        Diese Funktion wird aufgerufen, um eine Runde Roulette zu spielen.
+    @commands.hybrid_command(name="roulette", description="Play roulette", aliases=["rl"])
+    @app_commands.describe(
+        bet="Amount to bet",
+        wager="What to bet on (number 0-36, or color: red/black/green)"
+    )
+    async def roulette(self, ctx: Context | Interaction, bet: int, wager: str):
+        """Play roulette by betting on numbers or colors."""
+        author = self._return_author(ctx)
 
-        Parameter:
-        - ctx (Context | Interaction): Der Kontext, in dem der Befehl ausgeführt wurde.
-        - bet (int): Der Einsatzbetrag für das Spiel.
-        - entry (str): Die Wette, die der Benutzer platzieren möchte.
+        # Validate bet
+        is_valid, error_msg = await self.game_manager.validate_bet(ctx, bet)
+        if not is_valid:
+            await ctx.send(f"❌ {error_msg}", ephemeral=True, delete_after=5)
+            return
 
-        Aktionen:
-        - Ruft die Funktion `execute_gaming_with_timeout` auf, um eine Runde Roulette zu spielen.
-        """
-        await self.games.execute_gaming_with_timeout(ctx, self.games.roulette_command, bet, entry)
+        # Create game
+        game = RouletteGame(author, bet, wager)
+
+        # Validate wager
+        if not game.is_valid_bet():
+            await ctx.send(
+                "❌ Invalid wager! Valid options:\n"
+                "• Numbers: 0-36\n"
+                "• Colors: red, black, green",
+                ephemeral=True,
+                delete_after=10
+            )
+            return
+
+        # Execute game
+        await self.game_manager.execute_game(ctx, game, author)
 
     @commands.hybrid_command(name="higherlower", description="Spiel ein bisschen Higher/Lower", aliases=["hl"])
     @app_commands.describe(bet="Wieviel du setzen möchtest")
@@ -137,7 +155,17 @@ class GamingCog(commands.Cog):
         Aktionen:
         - Ruft die Funktion `execute_gaming_with_timeout` auf, um eine Runde Higher/Lower zu spielen.
         """
-        await self.games.execute_gaming_with_timeout(ctx, self.games.higher_lower_command, bet)
+        author = self._return_author(ctx)
+
+        # Validate bet
+        is_valid, error_msg = await self.game_manager.validate_bet(ctx, bet)
+        if not is_valid:
+            await ctx.send(f"❌ {error_msg}", ephemeral=True, delete_after=5)
+            return
+
+        # Create game
+        game = HigherLowerGame(author, bet)
+        await self.game_manager.execute_game(ctx, game, author)
 
     @commands.hybrid_command(name="rob", description="Raube die Bank oder einen Spieler")
     @app_commands.describe(may_member="Wähle eine Spieler oder Raube lieber die Bank")
