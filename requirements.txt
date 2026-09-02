@@ -1,6 +1,6 @@
 discord.py==2.5.2
 requests==2.32.4
-urllib3==2.5.0
+urllib3==2.7.0
 six==1.17.0
 cryptography==45.0.2
 SQLAlchemy~=2.0.41
